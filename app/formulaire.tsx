@@ -102,7 +102,7 @@ export default function Formulaire() {
 
     setErreurNom(nomInvalide ? 'Le nom est obligatoire.' : null);
     setErreurDate(
-      dateInvalide ? 'Date invalide. Format attendu : JJ/MM/AAAA.' : null
+      dateInvalide ? 'Date invalide. Format attendu : MM/AA.' : null
     );
 
     if (nomInvalide || dateInvalide) return;
@@ -185,12 +185,13 @@ export default function Formulaire() {
 
         <ChampTexte
           libelle="Date de péremption"
-          aide="Format JJ/MM/AAAA"
+          aide="Format MM/AA, comme sur la boîte"
           value={datePeremption}
           onChangeText={setDatePeremption}
           erreur={erreurDate}
-          placeholder="31/12/2027"
+          placeholder="12/27"
           keyboardType="numbers-and-punctuation"
+          maxLength={5}
         />
 
         <SelecteurPuces

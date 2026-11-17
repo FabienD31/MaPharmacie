@@ -1,37 +1,97 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avertissement } from '../src/components/Avertissement';
+import { BarreRecherche } from '../src/components/BarreRecherche';
 import { CarteMedicament } from '../src/components/CarteMedicament';
-import { listerMedicaments } from '../src/db/medicaments';
+import { LigneFiltres } from '../src/components/LigneFiltres';
+import { listerMedicaments, valeursDistinctes } from '../src/db/medicaments';
 import { SEUIL_ALERTE_JOURS, type Medicament } from '../src/db/schema';
 import { couleurs, espacements, rayons } from '../src/lib/theme';
 
+/** Délai avant de relancer la requête pendant la frappe, en millisecondes. */
+const DELAI_RECHERCHE = 250;
+
 /**
  * Écran d'accueil : la liste des médicaments, péremptions les plus proches
- * en premier. Le tri est fait par SQLite (voir listerMedicaments).
+ * en premier, avec recherche texte et filtres par lieu et par forme.
+ *
+ * Le tri et le filtrage sont faits par SQLite (voir listerMedicaments) plutôt
+ * qu'en JavaScript : la base reste la seule source de vérité.
  */
 export default function Accueil() {
   const db = useSQLiteContext();
-  const [medicaments, setMedicaments] = useState<Medicament[]>([]);
 
-  // Rechargement à chaque fois que l'écran reprend le focus : au retour du
-  // formulaire ou d'une suppression, la liste reflète l'état réel de la base.
+  const [medicaments, setMedicaments] = useState<Medicament[]>([]);
+  const [total, setTotal] = useState(0);
+
+  const [recherche, setRecherche] = useState('');
+  const [rechercheDifferee, setRechercheDifferee] = useState('');
+  const [lieu, setLieu] = useState<string | null>(null);
+  const [forme, setForme] = useState<string | null>(null);
+
+  const [lieuxDisponibles, setLieuxDisponibles] = useState<string[]>([]);
+  const [formesDisponibles, setFormesDisponibles] = useState<string[]>([]);
+
+  const filtresActifs =
+    rechercheDifferee.trim().length > 0 || lieu !== null || forme !== null;
+
+  // On attend une courte pause dans la frappe avant d'interroger la base,
+  // pour éviter une requête par caractère saisi.
+  useEffect(() => {
+    const minuteur = setTimeout(
+      () => setRechercheDifferee(recherche),
+      DELAI_RECHERCHE
+    );
+    return () => clearTimeout(minuteur);
+  }, [recherche]);
+
+  // Rechargement au focus de l'écran et à chaque changement de critère :
+  // au retour du formulaire ou d'une suppression, la liste reflète la base.
   useFocusEffect(
     useCallback(() => {
       let actif = true;
 
-      listerMedicaments(db).then((resultat) => {
-        if (actif) setMedicaments(resultat);
-      });
+      async function charger() {
+        const [resultats, nombreTotal, lieux, formes] = await Promise.all([
+          listerMedicaments(db, {
+            recherche: rechercheDifferee,
+            lieuRangement: lieu,
+            forme,
+          }),
+          listerMedicaments(db).then((tous) => tous.length),
+          valeursDistinctes(db, 'lieu_rangement'),
+          valeursDistinctes(db, 'forme'),
+        ]);
+
+        if (!actif) return;
+        setMedicaments(resultats);
+        setTotal(nombreTotal);
+        setLieuxDisponibles(lieux);
+        setFormesDisponibles(formes);
+      }
+
+      charger();
 
       return () => {
         actif = false;
       };
-    }, [db])
+    }, [db, rechercheDifferee, lieu, forme])
   );
+
+  /** Remet la liste à plat : ni recherche, ni filtre. */
+  function reinitialiser() {
+    setRecherche('');
+    setRechercheDifferee('');
+    setLieu(null);
+    setForme(null);
+  }
+
+  // Un inventaire vide et une recherche sans résultat n'appellent pas le
+  // même message : le premier invite à ajouter, le second à élargir.
+  const inventaireVide = total === 0;
 
   return (
     <View style={styles.ecran}>
@@ -39,12 +99,60 @@ export default function Accueil() {
         data={medicaments}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.liste}
-        ListHeaderComponent={<Avertissement />}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          <View>
+            <Avertissement />
+
+            {!inventaireVide && (
+              <>
+                <BarreRecherche valeur={recherche} onChange={setRecherche} />
+
+                <LigneFiltres
+                  libelle="Lieu de rangement"
+                  options={lieuxDisponibles}
+                  valeur={lieu}
+                  onChange={setLieu}
+                />
+
+                <LigneFiltres
+                  libelle="Forme"
+                  options={formesDisponibles}
+                  valeur={forme}
+                  onChange={setForme}
+                />
+
+                <View style={styles.resume}>
+                  <Text style={styles.compteur}>
+                    {medicaments.length} sur {total}
+                    {medicaments.length === 1 ? ' médicament' : ' médicaments'}
+                  </Text>
+
+                  {filtresActifs && (
+                    <Pressable
+                      onPress={reinitialiser}
+                      accessibilityRole="button"
+                      hitSlop={8}
+                    >
+                      <Text style={styles.reinitialiser}>Tout afficher</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </>
+            )}
+          </View>
+        }
         ListEmptyComponent={
           <View style={styles.vide}>
-            <Text style={styles.videTitre}>Aucun médicament enregistré</Text>
+            <Text style={styles.videTitre}>
+              {inventaireVide
+                ? 'Aucun médicament enregistré'
+                : 'Aucun résultat'}
+            </Text>
             <Text style={styles.videTexte}>
-              Ajoute un premier médicament pour commencer ton inventaire.
+              {inventaireVide
+                ? 'Ajoute un premier médicament pour commencer ton inventaire.'
+                : 'Aucun médicament ne correspond à ta recherche ou à tes filtres.'}
             </Text>
           </View>
         }
@@ -78,6 +186,21 @@ const styles = StyleSheet.create({
     padding: espacements.l,
     // Laisse la place au bouton flottant en bas de l'écran.
     paddingBottom: 96,
+  },
+  resume: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: espacements.m,
+  },
+  compteur: {
+    fontSize: 12,
+    color: couleurs.texteSecondaire,
+  },
+  reinitialiser: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: couleurs.primaire,
   },
   vide: {
     alignItems: 'center',

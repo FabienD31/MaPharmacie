@@ -7,7 +7,7 @@ export const NOM_BASE = 'mapharmacie.db';
  * Version attendue du schéma.
  * À incrémenter à chaque nouvelle migration ajoutée ci-dessous.
  */
-const VERSION_SCHEMA = 1;
+const VERSION_SCHEMA = 2;
 
 /**
  * Applique les migrations manquantes au démarrage.
@@ -50,6 +50,18 @@ export async function migrerBase(db: SQLiteDatabase): Promise<void> {
         ON medicaments (date_peremption);
     `);
     version = 1;
+  }
+
+  // Migration 2 : les dates de péremption passent de « AAAA-MM-JJ » à
+  // « AAAA-MM ». Les boîtes n'impriment qu'un mois et une année ; on tronque
+  // les dates déjà saisies plutôt que de demander une ressaisie.
+  if (version === 1) {
+    await db.execAsync(`
+      UPDATE medicaments
+      SET date_peremption = substr(date_peremption, 1, 7)
+      WHERE date_peremption IS NOT NULL AND length(date_peremption) = 10;
+    `);
+    version = 2;
   }
 
   await db.execAsync(`PRAGMA user_version = ${version}`);

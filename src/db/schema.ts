@@ -1,9 +1,10 @@
 /**
  * Modèle de données et listes de référence.
  *
- * Les dates sont stockées en TEXT au format ISO court « AAAA-MM-JJ ».
- * Ce format se trie correctement en SQL par ordre alphabétique, ce qui évite
- * toute conversion au moment du tri par péremption.
+ * Les dates de péremption sont stockées en TEXT au format « AAAA-MM », comme
+ * sur les boîtes, qui n'impriment qu'un mois et une année. Ce format se trie
+ * correctement en SQL par ordre alphabétique, ce qui évite toute conversion au
+ * moment du tri par péremption.
  */
 
 /** Un médicament tel qu'il est stocké en base. */
@@ -14,7 +15,7 @@ export type Medicament = {
   dosage: string | null;
   forme: string | null;
   quantiteRestante: number | null;
-  /** Format « AAAA-MM-JJ », ou null si la date est inconnue. */
+  /** Format « AAAA-MM », ou null si la date est inconnue. */
   datePeremption: string | null;
   lieuRangement: string | null;
   notes: string | null;
