@@ -317,7 +317,7 @@ export default function Formulaire() {
         l'écran d'un bloc et pouvait laisser le champ sous le clavier.
       */}
       <ScrollView
-        contentContainerStyle={styles.contenu}
+        contentContainerStyle={[styles.contenu, styles.centre]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
@@ -516,6 +516,13 @@ export default function Formulaire() {
 }
 
 const styles = StyleSheet.create({
+  // Sur tablette, le contenu reste centré et borné : une ligne de texte
+  // large de 10 pouces est illisible.
+  centre: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+  },
   ecran: {
     flex: 1,
     backgroundColor: couleurs.fond,

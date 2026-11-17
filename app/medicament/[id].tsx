@@ -113,7 +113,10 @@ export default function FicheMedicament() {
   }
 
   return (
-    <ScrollView style={styles.ecran} contentContainerStyle={styles.contenu}>
+    <ScrollView
+      style={styles.ecran}
+      contentContainerStyle={[styles.contenu, styles.centre]}
+    >
       <View style={styles.entete}>
         {/* Le nom est un lien : il ouvre une recherche web sur le médicament. */}
         <Pressable
@@ -211,6 +214,13 @@ export default function FicheMedicament() {
 }
 
 const styles = StyleSheet.create({
+  // Sur tablette, le contenu reste centré et borné : une ligne de texte
+  // large de 10 pouces est illisible.
+  centre: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+  },
   ecran: {
     flex: 1,
     backgroundColor: couleurs.fond,

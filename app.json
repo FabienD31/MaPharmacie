@@ -4,11 +4,11 @@
     "slug": "ma-pharmacie",
     "scheme": "mapharmacie",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "com.fabien.mapharmacie"
     },
     "android": {

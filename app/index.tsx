@@ -10,6 +10,7 @@ import { LigneFiltres } from '../src/components/LigneFiltres';
 import { listerMedicaments, valeursDistinctes } from '../src/db/medicaments';
 import type { Medicament } from '../src/db/schema';
 import { usePreferences } from '../src/lib/ContextePreferences';
+import { useMiseEnPage } from '../src/lib/miseEnPage';
 import { couleurs, espacements, rayons } from '../src/lib/theme';
 
 /** Délai avant de relancer la requête pendant la frappe, en millisecondes. */
@@ -25,6 +26,7 @@ const DELAI_RECHERCHE = 250;
 export default function Accueil() {
   const db = useSQLiteContext();
   const { preferences, resynchroniser } = usePreferences();
+  const { colonnes, largeurMax } = useMiseEnPage();
 
   const [medicaments, setMedicaments] = useState<Medicament[]>([]);
   const [total, setTotal] = useState(0);
@@ -121,7 +123,15 @@ export default function Accueil() {
       <FlatList
         data={medicaments}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.liste}
+        // Changer le nombre de colonnes impose de remonter la liste :
+        // FlatList ne sait pas le faire varier en place.
+        key={`colonnes-${colonnes}`}
+        numColumns={colonnes}
+        columnWrapperStyle={colonnes > 1 ? styles.rangeeColonnes : undefined}
+        contentContainerStyle={[
+          styles.liste,
+          { maxWidth: largeurMax, width: '100%', alignSelf: 'center' },
+        ]}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         ListHeaderComponent={
@@ -194,15 +204,17 @@ export default function Accueil() {
           </View>
         }
         renderItem={({ item }) => (
-          <CarteMedicament
-            medicament={item}
-            seuilJours={preferences.seuilJours}
-            onPress={() => router.push(`/medicament/${item.id}`)}
-          />
+          <View style={colonnes > 1 ? styles.celluleColonne : undefined}>
+            <CarteMedicament
+              medicament={item}
+              seuilJours={preferences.seuilJours}
+              onPress={() => router.push(`/medicament/${item.id}`)}
+            />
+          </View>
         )}
       />
 
-      <View style={styles.actionsBas}>
+      <View style={[styles.actionsBas, { maxWidth: largeurMax }]}>
         <Pressable
           onPress={() => router.push('/scan')}
           accessibilityRole="button"
@@ -291,6 +303,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: espacements.xl,
   },
+  // Sur tablette, les cartes se répartissent en colonnes de largeur égale.
+  rangeeColonnes: {
+    gap: espacements.m,
+  },
+  celluleColonne: {
+    flex: 1,
+  },
   actionsBas: {
     position: 'absolute',
     left: espacements.l,
@@ -298,6 +317,8 @@ const styles = StyleSheet.create({
     bottom: espacements.xl,
     flexDirection: 'row',
     gap: espacements.s,
+    alignSelf: 'center',
+    width: '100%',
   },
   bouton: {
     flex: 1,

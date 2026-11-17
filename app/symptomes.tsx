@@ -70,7 +70,7 @@ export default function RechercheSymptomes() {
       <FlatList
         data={resultats}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.liste}
+        contentContainerStyle={[styles.liste, styles.centre]}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         ListHeaderComponent={
@@ -155,6 +155,13 @@ export default function RechercheSymptomes() {
 }
 
 const styles = StyleSheet.create({
+  // Sur tablette, le contenu reste centré et borné : une ligne de texte
+  // large de 10 pouces est illisible.
+  centre: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+  },
   ecran: {
     flex: 1,
     backgroundColor: couleurs.fond,
