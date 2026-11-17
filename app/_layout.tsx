@@ -52,6 +52,10 @@ export default function LayoutRacine() {
                 options={{ title: 'Médicament', presentation: 'modal' }}
               />
               <Stack.Screen name="parametres" options={{ title: 'Réglages' }} />
+              <Stack.Screen
+                name="symptomes"
+                options={{ title: 'Par symptôme' }}
+              />
             </Stack>
           </FournisseurPreferences>
         </SQLiteProvider>

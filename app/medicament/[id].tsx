@@ -15,6 +15,7 @@ import { obtenirMedicament, supprimerMedicament } from '../../src/db/medicaments
 import type { Medicament } from '../../src/db/schema';
 import { usePreferences } from '../../src/lib/ContextePreferences';
 import { isoVersAffichage } from '../../src/lib/dates';
+import { ouvrirRechercheWeb } from '../../src/lib/rechercheWeb';
 import { couleurs, espacements, rayons } from '../../src/lib/theme';
 
 /** Une ligne « libellé / valeur » de la fiche. */
@@ -30,7 +31,7 @@ function Ligne({ libelle, valeur }: { libelle: string; valeur: string }) {
 /** Fiche détaillée d'un médicament, avec modification et suppression. */
 export default function FicheMedicament() {
   const db = useSQLiteContext();
-  const { preferences } = usePreferences();
+  const { preferences, enregistrer } = usePreferences();
   const { id } = useLocalSearchParams<{ id: string }>();
   const idMedicament = Number(id);
 
@@ -53,6 +54,25 @@ export default function FicheMedicament() {
       };
     }, [db, idMedicament])
   );
+
+  /**
+   * Ouvre une recherche web sur le médicament.
+   * Seule fonctionnalité de cet écran qui sort une information du téléphone.
+   */
+  function ouvrirWeb() {
+    if (!medicament) return;
+
+    ouvrirRechercheWeb(
+      medicament.nom,
+      medicament.principeActif,
+      preferences.avertissementWebVu,
+      () => {
+        enregistrer({ ...preferences, avertissementWebVu: true }).catch(() => {
+          // Mémoriser le choix est un confort, pas une condition.
+        });
+      }
+    );
+  }
 
   /** Demande confirmation avant une suppression définitive. */
   function confirmerSuppression() {
@@ -90,7 +110,17 @@ export default function FicheMedicament() {
   return (
     <ScrollView style={styles.ecran} contentContainerStyle={styles.contenu}>
       <View style={styles.entete}>
-        <Text style={styles.nom}>{medicament.nom}</Text>
+        {/* Le nom est un lien : il ouvre une recherche web sur le médicament. */}
+        <Pressable
+          onPress={ouvrirWeb}
+          accessibilityRole="link"
+          accessibilityLabel={`Rechercher ${medicament.nom} sur internet`}
+          style={({ pressed }) => pressed && styles.presse}
+        >
+          <Text style={styles.nom}>{medicament.nom}</Text>
+          <Text style={styles.indiceLien}>Toucher pour chercher sur le web ↗</Text>
+        </Pressable>
+
         <BadgePeremption
           datePeremption={medicament.datePeremption}
           seuilJours={preferences.seuilJours}
@@ -121,6 +151,19 @@ export default function FicheMedicament() {
           valeur={medicament.lieuRangement ?? 'Non renseigné'}
         />
       </View>
+
+      {medicament.effets.length > 0 && (
+        <View style={styles.carte}>
+          <Text style={styles.libelle}>Agit sur</Text>
+          <View style={styles.effets}>
+            {medicament.effets.map((effet) => (
+              <View key={effet} style={styles.puceEffet}>
+                <Text style={styles.texteEffet}>{effet}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
       {medicament.notes && (
         <View style={styles.carte}>
@@ -179,7 +222,32 @@ const styles = StyleSheet.create({
   nom: {
     fontSize: 22,
     fontWeight: '700',
-    color: couleurs.texte,
+    color: couleurs.primaire,
+    textDecorationLine: 'underline',
+  },
+  indiceLien: {
+    marginTop: 2,
+    fontSize: 12,
+    color: couleurs.texteSecondaire,
+  },
+  effets: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: espacements.s,
+    marginTop: espacements.s,
+  },
+  puceEffet: {
+    backgroundColor: couleurs.primaireClair,
+    borderColor: couleurs.primaire,
+    borderWidth: 1,
+    borderRadius: rayons.l,
+    paddingVertical: 6,
+    paddingHorizontal: espacements.m,
+  },
+  texteEffet: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: couleurs.primaire,
   },
   carte: {
     backgroundColor: couleurs.carte,

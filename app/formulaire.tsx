@@ -12,11 +12,13 @@ import {
 } from 'react-native';
 
 import { ChampTexte } from '../src/components/ChampTexte';
+import { SelecteurEffets } from '../src/components/SelecteurEffets';
 import { SelecteurPuces } from '../src/components/SelecteurPuces';
 import {
   creerMedicament,
   modifierMedicament,
   obtenirMedicament,
+  tousLesEffets,
 } from '../src/db/medicaments';
 import { FORMES, LIEUX } from '../src/db/schema';
 import { isoVersAffichage, saisieVersIso } from '../src/lib/dates';
@@ -50,6 +52,10 @@ export default function Formulaire() {
   const [datePeremption, setDatePeremption] = useState('');
   const [lieu, setLieu] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
+  const [effets, setEffets] = useState<string[]>([]);
+
+  /** Effets déjà employés ailleurs, proposés comme suggestions. */
+  const [suggestionsEffets, setSuggestionsEffets] = useState<string[]>([]);
 
   const [erreurNom, setErreurNom] = useState<string | null>(null);
   const [erreurDate, setErreurDate] = useState<string | null>(null);
@@ -61,6 +67,17 @@ export default function Formulaire() {
       title: modeEdition ? 'Modifier' : 'Nouveau médicament',
     });
   }, [navigation, modeEdition]);
+
+  // Les suggestions viennent de l'ensemble des effets déjà enregistrés.
+  useEffect(() => {
+    let actif = true;
+    tousLesEffets(db).then((liste) => {
+      if (actif) setSuggestionsEffets(liste);
+    });
+    return () => {
+      actif = false;
+    };
+  }, [db]);
 
   // En mode édition, on pré-remplit les champs avec la fiche existante.
   useEffect(() => {
@@ -83,6 +100,7 @@ export default function Formulaire() {
       );
       setLieu(medicament.lieuRangement);
       setNotes(medicament.notes ?? '');
+      setEffets(medicament.effets);
     });
 
     return () => {
@@ -119,6 +137,7 @@ export default function Formulaire() {
       datePeremption: dateIso,
       lieuRangement: lieu,
       notes: ouNull(notes),
+      effets,
     };
 
     setEnregistrement(true);
@@ -192,6 +211,12 @@ export default function Formulaire() {
           placeholder="12/27"
           keyboardType="numbers-and-punctuation"
           maxLength={5}
+        />
+
+        <SelecteurEffets
+          valeurs={effets}
+          onChange={setEffets}
+          suggestions={suggestionsEffets}
         />
 
         <SelecteurPuces

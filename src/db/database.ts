@@ -7,7 +7,7 @@ export const NOM_BASE = 'mapharmacie.db';
  * Version attendue du schéma.
  * À incrémenter à chaque nouvelle migration ajoutée ci-dessous.
  */
-const VERSION_SCHEMA = 3;
+const VERSION_SCHEMA = 4;
 
 /**
  * Applique les migrations manquantes au démarrage.
@@ -21,6 +21,10 @@ export async function migrerBase(db: SQLiteDatabase): Promise<void> {
     'PRAGMA user_version'
   );
   let version = resultat?.user_version ?? 0;
+
+  // Requis pour que la suppression d'un médicament efface aussi ses effets.
+  // Le réglage n'est pas persistant : il doit être posé à chaque ouverture.
+  await db.execAsync('PRAGMA foreign_keys = ON');
 
   if (version >= VERSION_SCHEMA) {
     return;
@@ -75,6 +79,23 @@ export async function migrerBase(db: SQLiteDatabase): Promise<void> {
       );
     `);
     version = 3;
+  }
+
+  // Migration 4 : les effets d'un médicament (« mal de tête », « courbature »).
+  // Table séparée plutôt qu'une colonne texte : un médicament a plusieurs
+  // effets, et la recherche par symptôme interroge directement cette table.
+  if (version === 3) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS effets (
+        medicament_id INTEGER NOT NULL
+          REFERENCES medicaments (id) ON DELETE CASCADE,
+        effet         TEXT    NOT NULL,
+        PRIMARY KEY (medicament_id, effet)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_effets_effet ON effets (effet);
+    `);
+    version = 4;
   }
 
   await db.execAsync(`PRAGMA user_version = ${version}`);

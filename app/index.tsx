@@ -129,6 +129,19 @@ export default function Accueil() {
 
             {!inventaireVide && (
               <>
+                <Pressable
+                  onPress={() => router.push('/symptomes')}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.lienSymptomes,
+                    pressed && styles.boutonPresse,
+                  ]}
+                >
+                  <Text style={styles.texteLienSymptomes}>
+                    Chercher par symptôme →
+                  </Text>
+                </Pressable>
+
                 <BarreRecherche valeur={recherche} onChange={setRecherche} />
 
                 <LigneFiltres
@@ -209,6 +222,21 @@ const styles = StyleSheet.create({
     padding: espacements.l,
     // Laisse la place au bouton flottant en bas de l'écran.
     paddingBottom: 96,
+  },
+  lienSymptomes: {
+    backgroundColor: couleurs.primaireClair,
+    borderColor: couleurs.primaire,
+    borderWidth: 1,
+    borderRadius: rayons.m,
+    paddingVertical: espacements.m,
+    paddingHorizontal: espacements.l,
+    marginBottom: espacements.m,
+    alignItems: 'center',
+  },
+  texteLienSymptomes: {
+    color: couleurs.primaire,
+    fontSize: 14,
+    fontWeight: '600',
   },
   lienEntete: {
     color: '#FFFFFF',

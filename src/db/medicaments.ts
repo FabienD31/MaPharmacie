@@ -1,10 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type {
-  LigneMedicament,
-  Medicament,
-  SaisieMedicament,
-} from './schema';
+import type { LigneMedicament, Medicament, SaisieMedicament } from './schema';
 
 /** Critères de filtrage de la liste. Tous optionnels. */
 export type FiltresListe = {
@@ -12,9 +8,14 @@ export type FiltresListe = {
   recherche?: string;
   lieuRangement?: string | null;
   forme?: string | null;
+  /** Ne garder que les médicaments portant cet effet. */
+  effet?: string | null;
 };
 
-/** Convertit une ligne SQLite (snake_case) vers le modèle de l'app (camelCase). */
+/**
+ * Convertit une ligne SQLite (snake_case) vers le modèle de l'app (camelCase).
+ * Les effets sont rattachés séparément, voir `attacherEffets`.
+ */
 function versMedicament(ligne: LigneMedicament): Medicament {
   return {
     id: ligne.id,
@@ -26,9 +27,39 @@ function versMedicament(ligne: LigneMedicament): Medicament {
     datePeremption: ligne.date_peremption,
     lieuRangement: ligne.lieu_rangement,
     notes: ligne.notes,
+    effets: [],
     creeLe: ligne.cree_le,
     modifieLe: ligne.modifie_le,
   };
+}
+
+/**
+ * Rattache leurs effets à une liste de médicaments.
+ *
+ * Une seule requête pour tout le lot plutôt qu'une par médicament : la table
+ * des effets reste petite, et on évite autant d'allers-retours que de lignes.
+ */
+async function attacherEffets(
+  db: SQLiteDatabase,
+  medicaments: Medicament[]
+): Promise<Medicament[]> {
+  if (medicaments.length === 0) return medicaments;
+
+  const lignes = await db.getAllAsync<{ medicament_id: number; effet: string }>(
+    'SELECT medicament_id, effet FROM effets ORDER BY effet COLLATE NOCASE ASC'
+  );
+
+  const parMedicament = new Map<number, string[]>();
+  for (const ligne of lignes) {
+    const existants = parMedicament.get(ligne.medicament_id);
+    if (existants) existants.push(ligne.effet);
+    else parMedicament.set(ligne.medicament_id, [ligne.effet]);
+  }
+
+  return medicaments.map((medicament) => ({
+    ...medicament,
+    effets: parMedicament.get(medicament.id) ?? [],
+  }));
 }
 
 /**
@@ -61,6 +92,11 @@ export async function listerMedicaments(
     parametres.push(filtres.forme);
   }
 
+  if (filtres.effet) {
+    conditions.push('id IN (SELECT medicament_id FROM effets WHERE effet = ?)');
+    parametres.push(filtres.effet);
+  }
+
   const clauseWhere =
     conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -71,7 +107,7 @@ export async function listerMedicaments(
     parametres
   );
 
-  return lignes.map(versMedicament);
+  return attacherEffets(db, lignes.map(versMedicament));
 }
 
 /** Récupère un médicament par son identifiant, ou null s'il n'existe plus. */
@@ -83,7 +119,39 @@ export async function obtenirMedicament(
     'SELECT * FROM medicaments WHERE id = ?',
     [id]
   );
-  return ligne ? versMedicament(ligne) : null;
+  if (!ligne) return null;
+
+  const [avecEffets] = await attacherEffets(db, [versMedicament(ligne)]);
+  return avecEffets;
+}
+
+/** Remplace l'ensemble des effets d'un médicament. */
+async function remplacerEffets(
+  db: SQLiteDatabase,
+  idMedicament: number,
+  effets: string[]
+): Promise<void> {
+  await db.runAsync('DELETE FROM effets WHERE medicament_id = ?', [
+    idMedicament,
+  ]);
+
+  // Doublons écartés sans tenir compte de la casse : « Fièvre » et « fièvre »
+  // ne doivent pas devenir deux entrées distinctes.
+  const vus = new Set<string>();
+
+  for (const effet of effets) {
+    const propre = effet.trim();
+    if (propre.length === 0) continue;
+
+    const cle = propre.toLocaleLowerCase('fr-FR');
+    if (vus.has(cle)) continue;
+    vus.add(cle);
+
+    await db.runAsync(
+      'INSERT OR IGNORE INTO effets (medicament_id, effet) VALUES (?, ?)',
+      [idMedicament, propre]
+    );
+  }
 }
 
 /** Insère un médicament et renvoie son identifiant. */
@@ -111,6 +179,8 @@ export async function creerMedicament(
       maintenant,
     ]
   );
+
+  await remplacerEffets(db, resultat.lastInsertRowId, saisie.effets);
 
   return resultat.lastInsertRowId;
 }
@@ -140,13 +210,18 @@ export async function modifierMedicament(
       id,
     ]
   );
+
+  await remplacerEffets(db, id, saisie.effets);
 }
 
-/** Supprime définitivement un médicament. */
+/** Supprime définitivement un médicament et ses effets. */
 export async function supprimerMedicament(
   db: SQLiteDatabase,
   id: number
 ): Promise<void> {
+  // La cascade s'en chargerait, mais la suppression explicite garantit le
+  // nettoyage même si `PRAGMA foreign_keys` n'a pas été posé.
+  await db.runAsync('DELETE FROM effets WHERE medicament_id = ?', [id]);
   await db.runAsync('DELETE FROM medicaments WHERE id = ?', [id]);
 }
 
@@ -165,4 +240,37 @@ export async function valeursDistinctes(
      ORDER BY valeur COLLATE NOCASE ASC`
   );
   return lignes.map((ligne) => ligne.valeur);
+}
+
+/** Tous les effets déjà saisis, pour l'autocomplétion et la recherche. */
+export async function tousLesEffets(db: SQLiteDatabase): Promise<string[]> {
+  const lignes = await db.getAllAsync<{ effet: string }>(
+    'SELECT DISTINCT effet FROM effets ORDER BY effet COLLATE NOCASE ASC'
+  );
+  return lignes.map((ligne) => ligne.effet);
+}
+
+/**
+ * Médicaments dont un effet correspond à la recherche.
+ *
+ * Recherche volontairement permissive (sous-chaîne) : saisir « tête » doit
+ * retrouver « mal de tête ».
+ */
+export async function chercherParEffet(
+  db: SQLiteDatabase,
+  symptome: string
+): Promise<Medicament[]> {
+  const propre = symptome.trim();
+  if (propre.length === 0) return [];
+
+  const lignes = await db.getAllAsync<LigneMedicament>(
+    `SELECT * FROM medicaments
+     WHERE id IN (
+       SELECT medicament_id FROM effets WHERE effet LIKE ?
+     )
+     ORDER BY date_peremption IS NULL, date_peremption ASC, nom COLLATE NOCASE ASC`,
+    [`%${propre}%`]
+  );
+
+  return attacherEffets(db, lignes.map(versMedicament));
 }

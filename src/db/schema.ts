@@ -19,6 +19,11 @@ export type Medicament = {
   datePeremption: string | null;
   lieuRangement: string | null;
   notes: string | null;
+  /**
+   * Ce sur quoi le médicament agit, tel que l'utilisateur l'a noté
+   * (« mal de tête », « courbature »). Jamais un conseil de prise.
+   */
+  effets: string[];
   creeLe: string;
   modifieLe: string;
 };
