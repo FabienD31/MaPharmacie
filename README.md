@@ -171,6 +171,32 @@ La connexion par navigateur peut ne jamais rendre la main si la redirection
 locale n'aboutit pas ; `--no-browser` demande directement les identifiants dans
 le terminal.
 
+## Utiliser l'app sans serveur de développement
+
+Par défaut, Expo Go charge le code depuis le serveur Metro : il faut donc
+l'ordinateur allumé, `npx expo start` en cours, et le téléphone sur le même
+réseau. Peu pratique pour une app qu'on consulte au quotidien.
+
+La publication EAS Update lève cette contrainte sans aucun build natif :
+
+```bash
+npx eas-cli update --branch preview --message "..." --environment preview
+```
+
+Expo Go ouvre ensuite la version publiée depuis les serveurs d'Expo, sans
+serveur local :
+
+```
+exp://u.expo.dev/da64de9c-b864-49c8-a27d-fe8d75f52da4?channel-name=preview&runtime-version=exposdk:58.0.0
+```
+
+La version de runtime est fixée à `exposdk:58.0.0` dans `app.json` : Expo Go
+n'accepte une mise à jour que si elle correspond exactement à la version du SDK
+qu'il embarque. Une `policy` calculée ne conviendrait pas ici.
+
+Le code publié est figé : toute modification demande une nouvelle publication.
+Les réserves sur les notifications dans Expo Go restent valables.
+
 ## Build natif (EAS)
 
 Le projet est configuré pour EAS Build ([`eas.json`](eas.json)), ce qui permet

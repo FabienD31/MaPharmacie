@@ -21,8 +21,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -62,6 +61,10 @@
         "projectId": "da64de9c-b864-49c8-a27d-fe8d75f52da4"
       }
     },
-    "owner": "fabiend31"
+    "owner": "fabiend31",
+    "runtimeVersion": "exposdk:58.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/da64de9c-b864-49c8-a27d-fe8d75f52da4"
+    }
   }
 }

@@ -8,27 +8,31 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      }
+      },
+      "channel": "apk"
     },
     "simulateur": {
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
         "simulator": true
-      }
+      },
+      "channel": "simulateur"
     },
     "appareil": {
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
         "simulator": false
-      }
+      },
+      "channel": "appareil"
     },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {
