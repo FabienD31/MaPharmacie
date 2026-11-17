@@ -5,9 +5,21 @@ import { Suspense } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { BoutonRetour } from '../src/components/BoutonRetour';
 import { migrerBase, NOM_BASE } from '../src/db/database';
 import { FournisseurPreferences } from '../src/lib/ContextePreferences';
 import { couleurs, espacements } from '../src/lib/theme';
+
+/**
+ * Options d'en-tête communes aux écrans qui ont besoin d'un retour.
+ * On masque le bouton natif pour ne pas en afficher deux.
+ */
+function optionsRetour(libelle?: string) {
+  return {
+    headerBackVisible: false,
+    headerLeft: () => <BoutonRetour libelle={libelle} />,
+  };
+}
 
 /** Écran affiché pendant l'ouverture et la migration de la base. */
 function Chargement() {
@@ -45,18 +57,39 @@ export default function LayoutRacine() {
                 contentStyle: { backgroundColor: couleurs.fond },
               }}
             >
+              {/* L'accueil est la racine : pas de retour possible. */}
               <Stack.Screen name="index" options={{ title: 'Ma pharmacie' }} />
-              <Stack.Screen name="medicament/[id]" options={{ title: 'Fiche' }} />
+
+              {/*
+                Les autres écrans reçoivent le même bouton de retour, fourni
+                par l'application plutôt que par la navigation native : la
+                fenêtre modale n'en aurait pas, et l'apparence resterait
+                variable d'un écran à l'autre.
+              */}
+              <Stack.Screen
+                name="medicament/[id]"
+                options={{ title: 'Fiche', ...optionsRetour() }}
+              />
               <Stack.Screen
                 name="formulaire"
-                options={{ title: 'Médicament', presentation: 'modal' }}
+                options={{
+                  title: 'Médicament',
+                  presentation: 'modal',
+                  ...optionsRetour('Fermer'),
+                }}
               />
-              <Stack.Screen name="parametres" options={{ title: 'Réglages' }} />
+              <Stack.Screen
+                name="parametres"
+                options={{ title: 'Réglages', ...optionsRetour() }}
+              />
               <Stack.Screen
                 name="symptomes"
-                options={{ title: 'Par symptôme' }}
+                options={{ title: 'Par symptôme', ...optionsRetour() }}
               />
-              <Stack.Screen name="scan" options={{ title: 'Scanner' }} />
+              <Stack.Screen
+                name="scan"
+                options={{ title: 'Scanner', ...optionsRetour() }}
+              />
             </Stack>
           </FournisseurPreferences>
         </SQLiteProvider>

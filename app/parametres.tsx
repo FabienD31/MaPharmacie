@@ -135,7 +135,12 @@ export default function Parametres() {
   }
 
   return (
-    <ScrollView style={styles.ecran} contentContainerStyle={styles.contenu}>
+    <ScrollView
+      style={styles.ecran}
+      contentContainerStyle={styles.contenu}
+      keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
+    >
       <View style={styles.carte}>
         <View style={styles.rangee}>
           <View style={styles.rangeeTexte}>

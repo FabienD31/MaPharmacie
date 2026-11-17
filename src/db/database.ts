@@ -7,7 +7,7 @@ export const NOM_BASE = 'mapharmacie.db';
  * Version attendue du schéma.
  * À incrémenter à chaque nouvelle migration ajoutée ci-dessous.
  */
-const VERSION_SCHEMA = 4;
+const VERSION_SCHEMA = 5;
 
 /**
  * Applique les migrations manquantes au démarrage.
@@ -96,6 +96,16 @@ export async function migrerBase(db: SQLiteDatabase): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_effets_effet ON effets (effet);
     `);
     version = 4;
+  }
+
+  // Migration 5 : photo du médicament. On ne stocke que le chemin du fichier,
+  // pas l'image : une base SQLite n'est pas faite pour porter des binaires,
+  // et le fichier reste lisible directement par le composant d'affichage.
+  if (version === 4) {
+    await db.execAsync(`
+      ALTER TABLE medicaments ADD COLUMN photo_uri TEXT;
+    `);
+    version = 5;
   }
 
   await db.execAsync(`PRAGMA user_version = ${version}`);

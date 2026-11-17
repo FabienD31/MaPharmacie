@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { statutPeremption } from '../lib/dates';
 import { couleurs, espacements, rayons } from '../lib/theme';
@@ -31,20 +31,32 @@ export function CarteMedicament({ medicament, seuilJours, onPress }: Props) {
         pressed && styles.cartePressee,
       ]}
     >
-      <View style={styles.entete}>
-        <Text style={styles.nom} numberOfLines={1}>
-          {medicament.nom}
-        </Text>
-        {medicament.quantiteRestante !== null && (
-          <Text style={styles.quantite}>{medicament.quantiteRestante}×</Text>
+      <View style={styles.haut}>
+        {medicament.photoUri && (
+          <Image
+            source={{ uri: medicament.photoUri }}
+            style={styles.vignette}
+            resizeMode="cover"
+          />
         )}
-      </View>
 
-      {details.length > 0 && (
-        <Text style={styles.details} numberOfLines={1}>
-          {details}
-        </Text>
-      )}
+        <View style={styles.textes}>
+          <View style={styles.entete}>
+            <Text style={styles.nom} numberOfLines={1}>
+              {medicament.nom}
+            </Text>
+            {medicament.quantiteRestante !== null && (
+              <Text style={styles.quantite}>{medicament.quantiteRestante}×</Text>
+            )}
+          </View>
+
+          {details.length > 0 && (
+            <Text style={styles.details} numberOfLines={1}>
+              {details}
+            </Text>
+          )}
+        </View>
+      </View>
 
       <View style={styles.pied}>
         <BadgePeremption
@@ -77,6 +89,20 @@ const styles = StyleSheet.create({
   },
   cartePressee: {
     opacity: 0.6,
+  },
+  haut: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacements.m,
+  },
+  vignette: {
+    width: 48,
+    height: 48,
+    borderRadius: rayons.s,
+    backgroundColor: couleurs.bordure,
+  },
+  textes: {
+    flex: 1,
   },
   entete: {
     flexDirection: 'row',

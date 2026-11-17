@@ -27,6 +27,7 @@ function versMedicament(ligne: LigneMedicament): Medicament {
     datePeremption: ligne.date_peremption,
     lieuRangement: ligne.lieu_rangement,
     notes: ligne.notes,
+    photoUri: ligne.photo_uri,
     effets: [],
     creeLe: ligne.cree_le,
     modifieLe: ligne.modifie_le,
@@ -164,8 +165,8 @@ export async function creerMedicament(
   const resultat = await db.runAsync(
     `INSERT INTO medicaments
        (nom, principe_actif, dosage, forme, quantite_restante,
-        date_peremption, lieu_rangement, notes, cree_le, modifie_le)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        date_peremption, lieu_rangement, notes, photo_uri, cree_le, modifie_le)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       saisie.nom,
       saisie.principeActif,
@@ -175,6 +176,7 @@ export async function creerMedicament(
       saisie.datePeremption,
       saisie.lieuRangement,
       saisie.notes,
+      saisie.photoUri,
       maintenant,
       maintenant,
     ]
@@ -195,7 +197,7 @@ export async function modifierMedicament(
     `UPDATE medicaments SET
        nom = ?, principe_actif = ?, dosage = ?, forme = ?,
        quantite_restante = ?, date_peremption = ?, lieu_rangement = ?,
-       notes = ?, modifie_le = ?
+       notes = ?, photo_uri = ?, modifie_le = ?
      WHERE id = ?`,
     [
       saisie.nom,
@@ -206,6 +208,7 @@ export async function modifierMedicament(
       saisie.datePeremption,
       saisie.lieuRangement,
       saisie.notes,
+      saisie.photoUri,
       new Date().toISOString(),
       id,
     ]

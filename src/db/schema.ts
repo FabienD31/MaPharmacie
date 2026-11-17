@@ -24,6 +24,8 @@ export type Medicament = {
    * (« mal de tête », « courbature »). Jamais un conseil de prise.
    */
   effets: string[];
+  /** Chemin local de la photo du médicament, ou null. */
+  photoUri: string | null;
   creeLe: string;
   modifieLe: string;
 };
@@ -46,6 +48,7 @@ export type LigneMedicament = {
   date_peremption: string | null;
   lieu_rangement: string | null;
   notes: string | null;
+  photo_uri: string | null;
   cree_le: string;
   modifie_le: string;
 };

@@ -72,6 +72,7 @@ export default function RechercheSymptomes() {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.liste}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
         ListHeaderComponent={
           <View>
             <View style={styles.avertissement}>

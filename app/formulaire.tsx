@@ -3,8 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,6 +22,12 @@ import {
 } from '../src/db/medicaments';
 import { FORMES, LIEUX } from '../src/db/schema';
 import { isoVersAffichage, saisieVersIso } from '../src/lib/dates';
+import {
+  choisirPhoto,
+  prendrePhoto,
+  supprimerPhoto,
+  type ResultatPhoto,
+} from '../src/lib/photos';
 import { suggererEffets } from '../src/lib/suggestionsIA';
 import { couleurs, espacements, rayons } from '../src/lib/theme';
 
@@ -69,6 +74,15 @@ export default function Formulaire() {
   const [lieu, setLieu] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [effets, setEffets] = useState<string[]>([]);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [messagePhoto, setMessagePhoto] = useState<string | null>(null);
+
+  /**
+   * Photos conservées pendant cette session d'édition mais finalement
+   * remplacées ou retirées. Elles ne sont effacées du disque qu'à
+   * l'enregistrement : annuler le formulaire ne doit rien détruire.
+   */
+  const photosAbandonnees = useRef<string[]>([]);
 
   /** Effets déjà employés ailleurs, proposés comme suggestions. */
   const [suggestionsEffets, setSuggestionsEffets] = useState<string[]>([]);
@@ -121,12 +135,45 @@ export default function Formulaire() {
       setLieu(medicament.lieuRangement);
       setNotes(medicament.notes ?? '');
       setEffets(medicament.effets);
+      setPhotoUri(medicament.photoUri);
     });
 
     return () => {
       actif = false;
     };
   }, [db, idMedicament]);
+
+  /**
+   * Traite le retour du sélecteur de photo.
+   * L'ancienne photo n'est pas effacée tout de suite : si l'utilisateur
+   * annule le formulaire, elle doit être encore là.
+   */
+  function appliquerPhoto(resultat: ResultatPhoto) {
+    if (resultat.statut === 'annule') return;
+
+    if (resultat.statut === 'refus') {
+      setMessagePhoto(
+        "L'accès à l'appareil photo a été refusé. Tu peux l'autoriser dans les réglages du téléphone."
+      );
+      return;
+    }
+
+    if (resultat.statut === 'erreur') {
+      setMessagePhoto(resultat.message);
+      return;
+    }
+
+    if (photoUri) photosAbandonnees.current.push(photoUri);
+    setPhotoUri(resultat.uri);
+    setMessagePhoto(null);
+  }
+
+  /** Retire la photo de la fiche, sans l'effacer avant enregistrement. */
+  function retirerPhoto() {
+    if (photoUri) photosAbandonnees.current.push(photoUri);
+    setPhotoUri(null);
+    setMessagePhoto(null);
+  }
 
   /**
    * Demande à l'IA sur quoi agit ce médicament.
@@ -238,6 +285,7 @@ export default function Formulaire() {
       lieuRangement: lieu,
       notes: ouNull(notes),
       effets,
+      photoUri,
     };
 
     setEnregistrement(true);
@@ -247,6 +295,13 @@ export default function Formulaire() {
       } else {
         await creerMedicament(db, saisie);
       }
+
+      // Le formulaire est validé : les photos remplacées peuvent partir.
+      for (const abandonnee of photosAbandonnees.current) {
+        supprimerPhoto(abandonnee);
+      }
+      photosAbandonnees.current = [];
+
       router.back();
     } finally {
       setEnregistrement(false);
@@ -254,13 +309,18 @@ export default function Formulaire() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.ecran}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={styles.ecran}>
+      {/*
+        `automaticallyAdjustKeyboardInsets` laisse le système insérer la
+        hauteur du clavier sous le contenu et faire défiler jusqu'au champ
+        actif. C'est plus fiable qu'un KeyboardAvoidingView, qui décalait tout
+        l'écran d'un bloc et pouvait laisser le champ sous le clavier.
+      */}
       <ScrollView
         contentContainerStyle={styles.contenu}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
       >
         {prerempliParScan && (
           <View style={styles.bandeauScan}>
@@ -270,6 +330,62 @@ export default function Formulaire() {
             </Text>
           </View>
         )}
+
+        <View style={styles.blocPhoto}>
+          <Text style={styles.libellePhoto}>Photo</Text>
+
+          {photoUri ? (
+            <Image
+              source={{ uri: photoUri }}
+              style={styles.apercuPhoto}
+              resizeMode="cover"
+              accessibilityLabel="Photo du médicament"
+            />
+          ) : (
+            <View style={styles.photoVide}>
+              <Text style={styles.textePhotoVide}>Aucune photo</Text>
+            </View>
+          )}
+
+          <View style={styles.actionsPhoto}>
+            <Pressable
+              onPress={async () => appliquerPhoto(await prendrePhoto())}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.boutonPhoto,
+                pressed && styles.boutonPresse,
+              ]}
+            >
+              <Text style={styles.texteBoutonPhoto}>Prendre une photo</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={async () => appliquerPhoto(await choisirPhoto())}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.boutonPhoto,
+                pressed && styles.boutonPresse,
+              ]}
+            >
+              <Text style={styles.texteBoutonPhoto}>Choisir</Text>
+            </Pressable>
+          </View>
+
+          {photoUri && (
+            <Pressable
+              onPress={retirerPhoto}
+              accessibilityRole="button"
+              hitSlop={8}
+              style={styles.lienRetirerPhoto}
+            >
+              <Text style={styles.texteRetirerPhoto}>Retirer la photo</Text>
+            </Pressable>
+          )}
+
+          {messagePhoto && (
+            <Text style={styles.messagePhoto}>{messagePhoto}</Text>
+          )}
+        </View>
 
         <ChampTexte
           libelle="Nom *"
@@ -395,7 +511,7 @@ export default function Formulaire() {
           </Pressable>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -407,6 +523,68 @@ const styles = StyleSheet.create({
   contenu: {
     padding: espacements.l,
     paddingBottom: espacements.xxl,
+  },
+  blocPhoto: {
+    marginBottom: espacements.l,
+  },
+  libellePhoto: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: couleurs.texte,
+    marginBottom: espacements.s,
+  },
+  apercuPhoto: {
+    width: '100%',
+    height: 180,
+    borderRadius: rayons.m,
+    backgroundColor: couleurs.bordure,
+  },
+  photoVide: {
+    width: '100%',
+    height: 110,
+    borderRadius: rayons.m,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: couleurs.bordure,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textePhotoVide: {
+    fontSize: 13,
+    color: couleurs.texteSecondaire,
+  },
+  actionsPhoto: {
+    flexDirection: 'row',
+    gap: espacements.s,
+    marginTop: espacements.s,
+  },
+  boutonPhoto: {
+    flex: 1,
+    borderColor: couleurs.primaire,
+    borderWidth: 1,
+    borderRadius: rayons.m,
+    paddingVertical: espacements.m,
+    alignItems: 'center',
+  },
+  texteBoutonPhoto: {
+    color: couleurs.primaire,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  lienRetirerPhoto: {
+    marginTop: espacements.s,
+    alignSelf: 'flex-start',
+  },
+  texteRetirerPhoto: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: couleurs.perime,
+  },
+  messagePhoto: {
+    marginTop: espacements.s,
+    fontSize: 12,
+    lineHeight: 17,
+    color: couleurs.texteSecondaire,
   },
   boutonIA: {
     borderColor: couleurs.primaire,

@@ -43,6 +43,13 @@
         {
           "color": "#1B6B9A"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "L'accès à la photothèque sert uniquement à associer une photo à un médicament de ton inventaire.",
+          "cameraPermission": "L'appareil photo sert uniquement à photographier une boîte de médicament. Les photos restent sur le téléphone."
+        }
       ]
     ],
     "extra": {

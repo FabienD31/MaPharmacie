@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,6 +16,7 @@ import { obtenirMedicament, supprimerMedicament } from '../../src/db/medicaments
 import type { Medicament } from '../../src/db/schema';
 import { usePreferences } from '../../src/lib/ContextePreferences';
 import { isoVersAffichage } from '../../src/lib/dates';
+import { supprimerPhoto } from '../../src/lib/photos';
 import { ouvrirRechercheWeb } from '../../src/lib/rechercheWeb';
 import { couleurs, espacements, rayons } from '../../src/lib/theme';
 
@@ -87,6 +89,9 @@ export default function FicheMedicament() {
           text: 'Supprimer',
           style: 'destructive',
           onPress: async () => {
+            // La photo part avec la fiche : sans ça, le fichier resterait
+            // sur le téléphone sans que rien ne le référence.
+            supprimerPhoto(medicament.photoUri);
             await supprimerMedicament(db, idMedicament);
             router.back();
           },
@@ -126,6 +131,15 @@ export default function FicheMedicament() {
           seuilJours={preferences.seuilJours}
         />
       </View>
+
+      {medicament.photoUri && (
+        <Image
+          source={{ uri: medicament.photoUri }}
+          style={styles.photo}
+          resizeMode="cover"
+          accessibilityLabel={`Photo de ${medicament.nom}`}
+        />
+      )}
 
       <View style={styles.carte}>
         <Ligne
@@ -248,6 +262,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: couleurs.primaire,
+  },
+  photo: {
+    width: '100%',
+    height: 200,
+    borderRadius: rayons.l,
+    marginBottom: espacements.m,
+    backgroundColor: couleurs.bordure,
   },
   carte: {
     backgroundColor: couleurs.carte,

@@ -123,6 +123,7 @@ export default function Accueil() {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.liste}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
         ListHeaderComponent={
           <View>
             <Avertissement />
