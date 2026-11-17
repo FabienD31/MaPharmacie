@@ -1,4 +1,4 @@
-import { router, useFocusEffect } from 'expo-router';
+import { router, Stack, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -8,7 +8,8 @@ import { BarreRecherche } from '../src/components/BarreRecherche';
 import { CarteMedicament } from '../src/components/CarteMedicament';
 import { LigneFiltres } from '../src/components/LigneFiltres';
 import { listerMedicaments, valeursDistinctes } from '../src/db/medicaments';
-import { SEUIL_ALERTE_JOURS, type Medicament } from '../src/db/schema';
+import type { Medicament } from '../src/db/schema';
+import { usePreferences } from '../src/lib/ContextePreferences';
 import { couleurs, espacements, rayons } from '../src/lib/theme';
 
 /** Délai avant de relancer la requête pendant la frappe, en millisecondes. */
@@ -23,6 +24,7 @@ const DELAI_RECHERCHE = 250;
  */
 export default function Accueil() {
   const db = useSQLiteContext();
+  const { preferences, resynchroniser } = usePreferences();
 
   const [medicaments, setMedicaments] = useState<Medicament[]>([]);
   const [total, setTotal] = useState(0);
@@ -71,6 +73,12 @@ export default function Accueil() {
         setTotal(nombreTotal);
         setLieuxDisponibles(lieux);
         setFormesDisponibles(formes);
+
+        // L'inventaire a pu changer depuis la dernière ouverture de l'écran
+        // (ajout, modification, suppression) : on réaligne les notifications.
+        resynchroniser().catch(() => {
+          // Un échec de programmation ne doit pas casser l'affichage.
+        });
       }
 
       charger();
@@ -78,7 +86,7 @@ export default function Accueil() {
       return () => {
         actif = false;
       };
-    }, [db, rechercheDifferee, lieu, forme])
+    }, [db, rechercheDifferee, lieu, forme, resynchroniser])
   );
 
   /** Remet la liste à plat : ni recherche, ni filtre. */
@@ -95,6 +103,21 @@ export default function Accueil() {
 
   return (
     <View style={styles.ecran}>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable
+              onPress={() => router.push('/parametres')}
+              accessibilityRole="button"
+              accessibilityLabel="Réglages"
+              hitSlop={8}
+            >
+              <Text style={styles.lienEntete}>Réglages</Text>
+            </Pressable>
+          ),
+        }}
+      />
+
       <FlatList
         data={medicaments}
         keyExtractor={(item) => String(item.id)}
@@ -159,7 +182,7 @@ export default function Accueil() {
         renderItem={({ item }) => (
           <CarteMedicament
             medicament={item}
-            seuilJours={SEUIL_ALERTE_JOURS}
+            seuilJours={preferences.seuilJours}
             onPress={() => router.push(`/medicament/${item.id}`)}
           />
         )}
@@ -186,6 +209,10 @@ const styles = StyleSheet.create({
     padding: espacements.l,
     // Laisse la place au bouton flottant en bas de l'écran.
     paddingBottom: 96,
+  },
+  lienEntete: {
+    color: '#FFFFFF',
+    fontSize: 15,
   },
   resume: {
     flexDirection: 'row',

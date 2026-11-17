@@ -7,7 +7,7 @@ export const NOM_BASE = 'mapharmacie.db';
  * Version attendue du schéma.
  * À incrémenter à chaque nouvelle migration ajoutée ci-dessous.
  */
-const VERSION_SCHEMA = 2;
+const VERSION_SCHEMA = 3;
 
 /**
  * Applique les migrations manquantes au démarrage.
@@ -62,6 +62,19 @@ export async function migrerBase(db: SQLiteDatabase): Promise<void> {
       WHERE date_peremption IS NOT NULL AND length(date_peremption) = 10;
     `);
     version = 2;
+  }
+
+  // Migration 3 : table clé/valeur pour les réglages de l'application.
+  // Une table plutôt qu'un stockage séparé : tout reste dans le même fichier,
+  // donc dans la même sauvegarde et le même effacement si l'app est désinstallée.
+  if (version === 2) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS parametres (
+        cle    TEXT PRIMARY KEY NOT NULL,
+        valeur TEXT NOT NULL
+      );
+    `);
+    version = 3;
   }
 
   await db.execAsync(`PRAGMA user_version = ${version}`);

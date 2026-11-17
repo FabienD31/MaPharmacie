@@ -12,7 +12,8 @@ import {
 
 import { BadgePeremption } from '../../src/components/BadgePeremption';
 import { obtenirMedicament, supprimerMedicament } from '../../src/db/medicaments';
-import { SEUIL_ALERTE_JOURS, type Medicament } from '../../src/db/schema';
+import type { Medicament } from '../../src/db/schema';
+import { usePreferences } from '../../src/lib/ContextePreferences';
 import { isoVersAffichage } from '../../src/lib/dates';
 import { couleurs, espacements, rayons } from '../../src/lib/theme';
 
@@ -29,6 +30,7 @@ function Ligne({ libelle, valeur }: { libelle: string; valeur: string }) {
 /** Fiche détaillée d'un médicament, avec modification et suppression. */
 export default function FicheMedicament() {
   const db = useSQLiteContext();
+  const { preferences } = usePreferences();
   const { id } = useLocalSearchParams<{ id: string }>();
   const idMedicament = Number(id);
 
@@ -91,7 +93,7 @@ export default function FicheMedicament() {
         <Text style={styles.nom}>{medicament.nom}</Text>
         <BadgePeremption
           datePeremption={medicament.datePeremption}
-          seuilJours={SEUIL_ALERTE_JOURS}
+          seuilJours={preferences.seuilJours}
         />
       </View>
 

@@ -70,9 +70,3 @@ export const LIEUX = [
   'Voiture',
   'Réfrigérateur',
 ] as const;
-
-/**
- * Seuil par défaut, en jours, à partir duquel un médicament est considéré
- * comme « bientôt périmé ». Deviendra configurable avec les notifications.
- */
-export const SEUIL_ALERTE_JOURS = 30;

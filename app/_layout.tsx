@@ -6,6 +6,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { migrerBase, NOM_BASE } from '../src/db/database';
+import { FournisseurPreferences } from '../src/lib/ContextePreferences';
 import { couleurs, espacements } from '../src/lib/theme';
 
 /** Écran affiché pendant l'ouverture et la migration de la base. */
@@ -24,6 +25,9 @@ function Chargement() {
  * SQLiteProvider ouvre la base une seule fois pour toute l'application et la
  * met à disposition des écrans via `useSQLiteContext()`. `onInit` applique les
  * migrations avant que le moindre écran ne soit rendu.
+ *
+ * FournisseurPreferences se place à l'intérieur, car il lit ses réglages
+ * dans cette même base.
  */
 export default function LayoutRacine() {
   return (
@@ -31,25 +35,25 @@ export default function LayoutRacine() {
       <StatusBar style="light" />
       <Suspense fallback={<Chargement />}>
         <SQLiteProvider databaseName={NOM_BASE} onInit={migrerBase} useSuspense>
-          <Stack
-            screenOptions={{
-              headerStyle: { backgroundColor: couleurs.primaire },
-              headerTintColor: '#FFFFFF',
-              headerTitleStyle: { fontWeight: '600' },
-              headerBackTitle: 'Retour',
-              contentStyle: { backgroundColor: couleurs.fond },
-            }}
-          >
-            <Stack.Screen name="index" options={{ title: 'Ma pharmacie' }} />
-            <Stack.Screen
-              name="medicament/[id]"
-              options={{ title: 'Fiche' }}
-            />
-            <Stack.Screen
-              name="formulaire"
-              options={{ title: 'Médicament', presentation: 'modal' }}
-            />
-          </Stack>
+          <FournisseurPreferences>
+            <Stack
+              screenOptions={{
+                headerStyle: { backgroundColor: couleurs.primaire },
+                headerTintColor: '#FFFFFF',
+                headerTitleStyle: { fontWeight: '600' },
+                headerBackTitle: 'Retour',
+                contentStyle: { backgroundColor: couleurs.fond },
+              }}
+            >
+              <Stack.Screen name="index" options={{ title: 'Ma pharmacie' }} />
+              <Stack.Screen name="medicament/[id]" options={{ title: 'Fiche' }} />
+              <Stack.Screen
+                name="formulaire"
+                options={{ title: 'Médicament', presentation: 'modal' }}
+              />
+              <Stack.Screen name="parametres" options={{ title: 'Réglages' }} />
+            </Stack>
+          </FournisseurPreferences>
         </SQLiteProvider>
       </Suspense>
     </SafeAreaProvider>
