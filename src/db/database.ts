@@ -1,0 +1,56 @@
+import type { SQLiteDatabase } from 'expo-sqlite';
+
+/** Nom du fichier SQLite créé dans le stockage privé de l'application. */
+export const NOM_BASE = 'mapharmacie.db';
+
+/**
+ * Version attendue du schéma.
+ * À incrémenter à chaque nouvelle migration ajoutée ci-dessous.
+ */
+const VERSION_SCHEMA = 1;
+
+/**
+ * Applique les migrations manquantes au démarrage.
+ *
+ * On s'appuie sur `PRAGMA user_version`, un entier stocké dans le fichier
+ * SQLite lui-même : il indique jusqu'où les migrations ont déjà été appliquées.
+ * Chaque bloc ci-dessous ne s'exécute donc qu'une seule fois par appareil.
+ */
+export async function migrerBase(db: SQLiteDatabase): Promise<void> {
+  const resultat = await db.getFirstAsync<{ user_version: number }>(
+    'PRAGMA user_version'
+  );
+  let version = resultat?.user_version ?? 0;
+
+  if (version >= VERSION_SCHEMA) {
+    return;
+  }
+
+  // Migration 1 : création de la table des médicaments.
+  if (version === 0) {
+    await db.execAsync(`
+      PRAGMA journal_mode = WAL;
+
+      CREATE TABLE IF NOT EXISTS medicaments (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        nom               TEXT    NOT NULL,
+        principe_actif    TEXT,
+        dosage            TEXT,
+        forme             TEXT,
+        quantite_restante INTEGER,
+        date_peremption   TEXT,
+        lieu_rangement    TEXT,
+        notes             TEXT,
+        cree_le           TEXT    NOT NULL,
+        modifie_le        TEXT    NOT NULL
+      );
+
+      -- Le tri par défaut de l'application se fait sur cette colonne.
+      CREATE INDEX IF NOT EXISTS idx_medicaments_peremption
+        ON medicaments (date_peremption);
+    `);
+    version = 1;
+  }
+
+  await db.execAsync(`PRAGMA user_version = ${version}`);
+}
