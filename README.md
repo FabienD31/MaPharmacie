@@ -74,6 +74,18 @@ d'audience.
   nom depuis sa fiche
 - La recherche inclut le principe actif pour affiner les résultats
 
+### Suggestions par IA (optionnel)
+
+- Proposer automatiquement, après un scan, sur quoi agit le médicament
+- Demander la même proposition à la main depuis le formulaire
+- Les symptômes proposés arrivent en puces d'effets, donc exploitables par la
+  recherche par symptôme
+- Un résumé en une phrase est ajouté aux notes, marqué comme suggestion
+- Rien n'est enregistré sans validation : tout reste modifiable
+- Nécessite une clé d'API Anthropic personnelle, saisie dans les réglages et
+  rangée dans le trousseau du téléphone
+- L'application fonctionne entièrement sans cette clé, cette section en moins
+
 ---
 
 ## Ce qui sort du téléphone
@@ -81,16 +93,26 @@ d'audience.
 La base de données vit dans le stockage privé de l'application. Elle n'est
 jamais envoyée nulle part, et le dépôt ne contient aucune donnée personnelle.
 
-Deux fonctionnalités, et deux seulement, communiquent avec l'extérieur :
+Trois fonctionnalités, et trois seulement, communiquent avec l'extérieur. Les
+deux dernières sont déclenchées par une action explicite, la troisième n'existe
+que si une clé d'API a été saisie :
 
 | Fonctionnalité | Ce qui sort | Où |
 | --- | --- | --- |
 | Scan d'une boîte | le code CIP13 lu sur l'emballage | [`src/lib/apiMedicaments.ts`](src/lib/apiMedicaments.ts) |
 | Recherche web | le nom et le principe actif du médicament | [`src/lib/rechercheWeb.ts`](src/lib/rechercheWeb.ts) |
+| Suggestions par IA | le nom, le principe actif et le dosage | [`src/lib/suggestionsIA.ts`](src/lib/suggestionsIA.ts) |
 
 Rien d'autre ne circule : ni l'inventaire, ni les quantités, ni les notes, ni
-les effets, ni aucun identifiant d'appareil. Les deux chemins sont isolés dans
-un fichier chacun pour rester vérifiables d'un coup d'œil.
+les lieux de rangement, ni les effets, ni aucun identifiant d'appareil. Les
+trois chemins sont isolés dans un fichier chacun pour rester vérifiables d'un
+coup d'œil.
+
+La clé d'API est rangée dans le trousseau du système
+([`src/lib/cleApi.ts`](src/lib/cleApi.ts)), jamais dans la base ni dans le
+dépôt. Elle est portée par le téléphone et l'application appelle Anthropic
+directement : acceptable pour un usage personnel avec sa propre clé, mais ce
+schéma demanderait un serveur intermédiaire dans une application distribuée.
 
 Aucune dépendance de suivi ou d'analytics n'est installée.
 
@@ -103,6 +125,9 @@ Aucune dépendance de suivi ou d'analytics n'est installée.
   au SDK 58
 - Un compte Expo — depuis Expo Go 57, iOS exige d'être connecté au **même
   compte** côté application et côté terminal
+- Facultatif, pour les suggestions par IA : une clé d'API créée sur
+  [console.anthropic.com](https://console.anthropic.com/settings/keys), sur un
+  compte crédité. La clé se saisit dans l'application, jamais dans le code.
 
 ## Installation
 
@@ -162,7 +187,7 @@ app/                     Écrans (routage par fichiers, expo-router)
   medicament/[id].tsx    Fiche détaillée
   scan.tsx               Lecture du code-barres d'une boîte
   symptomes.tsx          Recherche par symptôme
-  parametres.tsx         Réglages des alertes
+  parametres.tsx         Réglages des alertes et clé d'API
 
 src/
   db/                    Accès aux données, aucun rendu
@@ -171,7 +196,7 @@ src/
     medicaments.ts       Lecture, écriture, recherche
     parametres.ts        Réglages persistés
   components/            Composants réutilisables, aucun SQL
-  lib/                   Dates, thème, notifications, code-barres, réseau
+  lib/                   Dates, thème, notifications, code-barres, réseau, IA
 ```
 
 La séparation est stricte : aucun écran ne contient de SQL, aucun module de
@@ -191,6 +216,13 @@ imprimé.
 produit, la date de péremption et le numéro de lot. Le décodage est fait
 localement, donc la date de péremption est récupérée même sans connexion : seul
 le nom du médicament demande un appel réseau.
+
+**Résolution CommonJS imposée à Metro.** Le SDK Anthropic contient un cycle
+d'imports ESM que Metro n'évalue pas correctement : `BetaToolRunner` arrive à
+`undefined` et l'application plante dès l'import. La configuration du bundler
+([`metro.config.js`](metro.config.js)) demande la condition `require`, donc les
+fichiers CommonJS, dont les exports tolèrent le cycle. À retenir si une
+dépendance se met à échouer au chargement sans erreur de compilation.
 
 **Migrations versionnées.** Le schéma évolue via `PRAGMA user_version`, un entier
 stocké dans le fichier SQLite lui-même. Chaque migration s'applique une fois par
@@ -223,7 +255,11 @@ plus proches sont programmées.
   dernières années : une boîte ancienne peut ne pas être reconnue.
 - La recherche texte ne neutralise pas les caractères `%` et `_`, interprétés
   par l'opérateur SQL `LIKE`.
-- La recherche par symptôme ne parcourt que les effets saisis manuellement.
+- La recherche par symptôme ne parcourt que les effets saisis manuellement ou
+  acceptés depuis une suggestion.
+- Les suggestions par IA sont des propositions à vérifier, pas une source
+  faisant autorité. Chaque suggestion est une requête facturée sur le compte
+  Anthropic de l'utilisateur, et le scan en déclenche une par boîte.
 
 ## Hors périmètre
 
