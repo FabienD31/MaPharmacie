@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { ProvenanceApp } from '../src/components/ProvenanceApp';
 import { SEUIL_MAX, SEUIL_MIN } from '../src/db/parametres';
 import {
   cleParaitValide,
@@ -281,6 +282,8 @@ export default function Parametres() {
           principe actif et son dosage — rien d&apos;autre.
         </Text>
       </View>
+
+      <ProvenanceApp />
 
       <View style={styles.note}>
         <Text style={styles.texteNote}>
