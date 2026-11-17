@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -22,6 +23,7 @@ import {
 } from '../src/db/medicaments';
 import { FORMES, LIEUX } from '../src/db/schema';
 import { isoVersAffichage, saisieVersIso } from '../src/lib/dates';
+import { suggererEffets } from '../src/lib/suggestionsIA';
 import { couleurs, espacements, rayons } from '../src/lib/theme';
 
 /** Transforme une saisie vide en null, pour ne pas stocker de chaînes vides. */
@@ -70,6 +72,10 @@ export default function Formulaire() {
 
   /** Effets déjà employés ailleurs, proposés comme suggestions. */
   const [suggestionsEffets, setSuggestionsEffets] = useState<string[]>([]);
+
+  /** État de la suggestion d'effets par IA. */
+  const [suggestionEnCours, setSuggestionEnCours] = useState(false);
+  const [messageIA, setMessageIA] = useState<string | null>(null);
 
   const [erreurNom, setErreurNom] = useState<string | null>(null);
   const [erreurDate, setErreurDate] = useState<string | null>(null);
@@ -121,6 +127,86 @@ export default function Formulaire() {
       actif = false;
     };
   }, [db, idMedicament]);
+
+  /**
+   * Demande à l'IA sur quoi agit ce médicament.
+   *
+   * Les effets proposés viennent s'ajouter aux puces, et le résumé est écrit
+   * dans les notes, signalé comme une suggestion. Rien n'est enregistré ici :
+   * tout reste modifiable, et c'est l'enregistrement du formulaire qui décide.
+   */
+  async function demanderSuggestions() {
+    const nomPropre = nom.trim();
+    if (nomPropre.length === 0 || suggestionEnCours) return;
+
+    setSuggestionEnCours(true);
+    setMessageIA(null);
+
+    const resultat = await suggererEffets(
+      nomPropre,
+      ouNull(principeActif),
+      ouNull(dosage)
+    );
+
+    setSuggestionEnCours(false);
+
+    if (resultat.statut === 'sans_cle') {
+      setMessageIA(
+        "Aucune clé d'API enregistrée. Ajoute-la dans Réglages pour activer les suggestions."
+      );
+      return;
+    }
+
+    if (resultat.statut === 'erreur') {
+      setMessageIA(resultat.message);
+      return;
+    }
+
+    const { effets: proposes, resume } = resultat.suggestions;
+
+    if (proposes.length === 0 && resume.length === 0) {
+      setMessageIA("L'IA n'a rien proposé pour ce médicament.");
+      return;
+    }
+
+    // Fusion sans doublon, en ignorant la casse.
+    setEffets((actuels) => {
+      const connus = new Set(
+        actuels.map((effet) => effet.trim().toLocaleLowerCase('fr-FR'))
+      );
+      const ajouts = proposes.filter(
+        (effet) => !connus.has(effet.trim().toLocaleLowerCase('fr-FR'))
+      );
+      return [...actuels, ...ajouts];
+    });
+
+    // Le résumé va dans les notes, explicitement marqué comme une suggestion
+    // pour qu'on ne le confonde pas avec une information vérifiée.
+    if (resume.length > 0) {
+      const ligne = `Suggestion IA : ${resume}`;
+      setNotes((actuelles) =>
+        actuelles.includes(ligne)
+          ? actuelles
+          : actuelles.trim().length > 0
+            ? `${actuelles.trim()}\n\n${ligne}`
+            : ligne
+      );
+    }
+
+    setMessageIA('Proposition ajoutée. Vérifie-la avant d’enregistrer.');
+  }
+
+  // Après un scan, la proposition est demandée d'office : c'est le moment où
+  // elle est utile, et le nom vient d'être rempli par la base publique.
+  const suggestionDemandee = useRef(false);
+  useEffect(() => {
+    if (!prerempliParScan || suggestionDemandee.current) return;
+    if (nom.trim().length === 0) return;
+    suggestionDemandee.current = true;
+    demanderSuggestions();
+    // Une seule fois, au retour du scan.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prerempliParScan, nom]);
 
   async function enregistrer() {
     // Validation : seul le nom est obligatoire, la date doit être lisible
@@ -242,6 +328,28 @@ export default function Formulaire() {
           suggestions={suggestionsEffets}
         />
 
+        <Pressable
+          onPress={demanderSuggestions}
+          disabled={suggestionEnCours || nom.trim().length === 0}
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.boutonIA,
+            (suggestionEnCours || nom.trim().length === 0) &&
+              styles.boutonDesactive,
+            pressed && styles.boutonPresse,
+          ]}
+        >
+          {suggestionEnCours ? (
+            <ActivityIndicator color={couleurs.primaire} />
+          ) : (
+            <Text style={styles.texteBoutonIA}>
+              Proposer ce que ça soigne (IA)
+            </Text>
+          )}
+        </Pressable>
+
+        {messageIA && <Text style={styles.messageIA}>{messageIA}</Text>}
+
         <SelecteurPuces
           libelle="Lieu de rangement"
           options={LIEUX}
@@ -299,6 +407,28 @@ const styles = StyleSheet.create({
   contenu: {
     padding: espacements.l,
     paddingBottom: espacements.xxl,
+  },
+  boutonIA: {
+    borderColor: couleurs.primaire,
+    borderWidth: 1,
+    borderRadius: rayons.m,
+    paddingVertical: espacements.m,
+    alignItems: 'center',
+    marginBottom: espacements.s,
+  },
+  boutonDesactive: {
+    opacity: 0.4,
+  },
+  texteBoutonIA: {
+    color: couleurs.primaire,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  messageIA: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: couleurs.texteSecondaire,
+    marginBottom: espacements.l,
   },
   bandeauScan: {
     backgroundColor: couleurs.primaireClair,
