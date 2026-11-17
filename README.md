@@ -169,6 +169,26 @@ La connexion par navigateur peut ne jamais rendre la main si la redirection
 locale n'aboutit pas ; `--no-browser` demande directement les identifiants dans
 le terminal.
 
+## Build natif (EAS)
+
+Le projet est configuré pour EAS Build ([`eas.json`](eas.json)), ce qui permet
+de construire dans le cloud, sans Mac. Trois profils :
+
+- `simulateur` — build non signé pour simulateur iOS. **Aucun compte Apple
+  requis**, mais ne permet de tester ni la caméra ni les notifications.
+- `appareil` — build installable sur iPhone, en distribution interne.
+  **Nécessite un compte Apple Developer payant** (99 $/an) : c'est Apple qui
+  l'impose pour signer une application installée sur un appareil physique.
+  Chaque iPhone doit être enregistré (`eas device:create`), 100 au maximum.
+- `production` — build destiné à l'App Store.
+
+```bash
+npx eas-cli build --platform ios --profile appareil
+```
+
+Tant qu'aucun build natif n'est fait, l'application s'utilise via Expo Go, avec
+la réserve sur les notifications mentionnée plus bas.
+
 ## Vérifier les types
 
 ```bash
