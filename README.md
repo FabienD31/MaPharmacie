@@ -76,6 +76,12 @@ d'audience.
   nom depuis sa fiche
 - La recherche inclut le principe actif pour affiner les résultats
 
+### Réglages
+
+- Connaître la provenance du code exécuté : version publiée ou serveur de
+  développement, avec le canal et l'identifiant de version
+- Les deux sont indiscernables à l'écran sans cette indication
+
 ### Suggestions par IA (optionnel)
 
 - Proposer automatiquement, après un scan, sur quoi agit le médicament
@@ -212,6 +218,40 @@ qu'il embarque. Une `policy` calculée ne conviendrait pas ici.
 Le code publié est figé : toute modification demande une nouvelle publication.
 Les réserves sur les notifications dans Expo Go restent valables.
 
+L'écran de réglages indique laquelle des deux provenances est en cours
+d'exécution, ce qui évite de se demander si une modification a bien été prise
+en compte.
+
+### Ce dont l'application a besoin au lancement
+
+Une fois publiée, l'application ne dépend plus d'aucun ordinateur, ni d'un
+réseau particulier. Expo Go télécharge le code depuis les serveurs d'Expo : il
+faut donc une connexion, mais n'importe laquelle. Le code est ensuite mis en
+cache.
+
+Une fois l'application ouverte, la quasi-totalité fonctionne hors ligne :
+
+| Hors ligne | Connexion requise |
+| --- | --- |
+| Inventaire, tri, filtres, recherche | Nom du médicament après un scan |
+| Recherche par symptôme | Suggestions par IA |
+| Photos, notes, effets | Ouverture d'une recherche web |
+| Alertes de péremption | |
+| Date de péremption lue dans le code-barres | |
+
+Scanner reste donc utile sans réseau : la date de péremption est dans le
+code-barres, seul le nom demande un appel distant.
+
+### Deux conditions à garder en tête
+
+- **Rester connecté au compte Expo propriétaire du projet.** Depuis 2026, Expo
+  Go n'ouvre une version publiée que pour ce compte.
+- **La version de runtime suit le SDK.** La publication cible
+  `exposdk:58.0.0` ; le jour où Expo Go passera au SDK suivant, il faudra
+  republier avec la nouvelle valeur.
+
+Un build natif ne dépend d'aucune de ces deux conditions.
+
 ## Build natif (EAS)
 
 Le projet est configuré pour EAS Build ([`eas.json`](eas.json)), ce qui permet
@@ -273,7 +313,8 @@ src/
     medicaments.ts       Lecture, écriture, recherche
     parametres.ts        Réglages persistés
   components/            Composants réutilisables, aucun SQL
-  lib/                   Dates, thème, notifications, code-barres, réseau, IA
+  lib/                   Dates, thème, mise en page, notifications,
+                         code-barres, réseau, IA, photos
 ```
 
 La séparation est stricte : aucun écran ne contient de SQL, aucun module de
@@ -348,6 +389,11 @@ plus proches sont programmées.
   par l'opérateur SQL `LIKE`.
 - La recherche par symptôme ne parcourt que les effets saisis manuellement ou
   acceptés depuis une suggestion.
+- Passer un jour à un build natif signifie repartir d'une base vide : chaque
+  installation a son propre stockage, l'inventaire ne suit pas tout seul.
+- Le lien d'ouverture dans Expo Go doit encoder les deux-points de la version
+  de runtime en `%3A`. Non encodé, rien ne se charge et aucune erreur
+  explicite ne le signale.
 - Les suggestions par IA sont des propositions à vérifier, pas une source
   faisant autorité. Chaque suggestion est une requête facturée sur le compte
   Anthropic de l'utilisateur, et le scan en déclenche une par boîte.
