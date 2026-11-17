@@ -214,7 +214,8 @@ export default function Accueil() {
         )}
       />
 
-      <View style={[styles.actionsBas, { maxWidth: largeurMax }]}>
+      <View style={styles.actionsBas}>
+        <View style={[styles.rangeeActions, { maxWidth: largeurMax }]}>
         <Pressable
           onPress={() => router.push('/scan')}
           accessibilityRole="button"
@@ -238,6 +239,7 @@ export default function Accueil() {
         >
           <Text style={styles.texteBouton}>+ Ajouter à la main</Text>
         </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -310,14 +312,25 @@ const styles = StyleSheet.create({
   celluleColonne: {
     flex: 1,
   },
+  /**
+   * Barre d'actions fixée en bas.
+   *
+   * `left` et `right` à 0 définissent déjà la largeur : y ajouter
+   * `width: '100%'` ferait déborder la barre de la valeur des marges.
+   * Les marges sont donc portées par le padding, et la largeur maximale
+   * par la rangée intérieure.
+   */
   actionsBas: {
     position: 'absolute',
-    left: espacements.l,
-    right: espacements.l,
+    left: 0,
+    right: 0,
     bottom: espacements.xl,
+    paddingHorizontal: espacements.l,
+    alignItems: 'center',
+  },
+  rangeeActions: {
     flexDirection: 'row',
     gap: espacements.s,
-    alignSelf: 'center',
     width: '100%',
   },
   bouton: {
