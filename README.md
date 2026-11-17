@@ -184,11 +184,26 @@ npx eas-cli update --branch preview --message "..." --environment preview
 ```
 
 Expo Go ouvre ensuite la version publiée depuis les serveurs d'Expo, sans
-serveur local :
+serveur local. Deux liens équivalents, à saisir dans `Enter URL manually` :
 
 ```
-exp://u.expo.dev/da64de9c-b864-49c8-a27d-fe8d75f52da4?channel-name=preview&runtime-version=exposdk:58.0.0
+# Dernière version publiée sur le canal
+exp://u.expo.dev/da64de9c-b864-49c8-a27d-fe8d75f52da4?runtime-version=exposdk%3A58.0.0&channel-name=preview
+
+# Une publication précise, plus court et sans paramètres
+exp://u.expo.dev/da64de9c-b864-49c8-a27d-fe8d75f52da4/group/<id-du-groupe>
 ```
+
+Les deux-points de la version de runtime doivent être encodés en `%3A` :
+non encodés, Expo Go n'ouvre rien. Le service officiel
+[qr.expo.dev](https://docs.expo.dev/more/qr-codes/) génère le lien et son QR
+code sans risque d'erreur :
+
+```bash
+curl "https://qr.expo.dev/eas-update?projectId=<id>&runtimeVersion=exposdk%3A58.0.0&channel=preview&format=url"
+```
+
+En retirant `&format=url`, la même adresse renvoie directement le QR code.
 
 La version de runtime est fixée à `exposdk:58.0.0` dans `app.json` : Expo Go
 n'accepte une mise à jour que si elle correspond exactement à la version du SDK
