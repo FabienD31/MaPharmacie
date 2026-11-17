@@ -18,6 +18,8 @@ d'audience.
 - Modifier une fiche existante
 - Supprimer un médicament, avec confirmation
 - Consulter la fiche détaillée de chaque médicament
+- Associer une photo au médicament, prise sur le moment ou choisie dans la
+  photothèque : vignette dans la liste, image entière sur la fiche
 
 ### Scan d'une boîte
 
@@ -172,19 +174,33 @@ le terminal.
 ## Build natif (EAS)
 
 Le projet est configuré pour EAS Build ([`eas.json`](eas.json)), ce qui permet
-de construire dans le cloud, sans Mac. Trois profils :
+de construire dans le cloud, sans Mac.
 
-- `simulateur` — build non signé pour simulateur iOS. **Aucun compte Apple
-  requis**, mais ne permet de tester ni la caméra ni les notifications.
-- `appareil` — build installable sur iPhone, en distribution interne.
-  **Nécessite un compte Apple Developer payant** (99 $/an) : c'est Apple qui
-  l'impose pour signer une application installée sur un appareil physique.
-  Chaque iPhone doit être enregistré (`eas device:create`), 100 au maximum.
-- `production` — build destiné à l'App Store.
+### Android — gratuit
 
 ```bash
-npx eas-cli build --platform ios --profile appareil
+npx eas-cli build --platform android --profile apk
 ```
+
+Produit un APK installable directement. **Aucun compte payant n'est
+nécessaire** : la clé de signature est générée et conservée par EAS à la
+première construction.
+
+### iOS — compte Apple requis
+
+| Profil | Installable sur | Compte Apple |
+| --- | --- | --- |
+| `simulateur` | simulateur iOS uniquement | non |
+| `appareil` | iPhone, distribution interne | **oui, 99 $/an** |
+| `production` | App Store | **oui, 99 $/an** |
+
+Apple impose la signature pour toute application installée sur un appareil
+physique, et EAS n'y change rien. Chaque iPhone doit être enregistré
+(`eas device:create`), 100 au maximum par an.
+
+Le profil `simulateur` est la seule voie gratuite, mais un simulateur ne teste
+ni la caméra ni les notifications — c'est-à-dire ni le scan ni les alertes de
+péremption.
 
 Tant qu'aucun build natif n'est fait, l'application s'utilise via Expo Go, avec
 la réserve sur les notifications mentionnée plus bas.
@@ -243,6 +259,20 @@ d'imports ESM que Metro n'évalue pas correctement : `BetaToolRunner` arrive à
 ([`metro.config.js`](metro.config.js)) demande la condition `require`, donc les
 fichiers CommonJS, dont les exports tolèrent le cycle. À retenir si une
 dépendance se met à échouer au chargement sans erreur de compilation.
+
+**Mise en page adaptative à partir de 600 points.** Le seuil est exprimé en
+points indépendants de la densité, pas en pouces : c'est ce que mesure React
+Native. 600 points correspond à une tablette 7 pouces en portrait, et c'est le
+seuil retenu par Android pour distinguer une tablette d'un téléphone. Au-delà,
+la liste passe en deux colonnes (trois à partir de 1000 points) et le contenu
+des autres écrans est centré et borné à 760 points, une ligne de texte étirée
+sur dix pouces étant illisible.
+
+**Photos stockées hors base.** Seul le chemin du fichier est en base. Le
+sélecteur renvoie un fichier temporaire que le système peut effacer : la photo
+est donc recopiée dans le stockage privé de l'application avant d'être
+référencée. Elle est effacée avec la fiche, et une photo remplacée ne disparaît
+qu'à la validation du formulaire — annuler ne détruit rien.
 
 **Migrations versionnées.** Le schéma évolue via `PRAGMA user_version`, un entier
 stocké dans le fichier SQLite lui-même. Chaque migration s'applique une fois par
