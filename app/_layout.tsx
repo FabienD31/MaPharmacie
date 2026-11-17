@@ -56,6 +56,7 @@ export default function LayoutRacine() {
                 name="symptomes"
                 options={{ title: 'Par symptôme' }}
               />
+              <Stack.Screen name="scan" options={{ title: 'Scanner' }} />
             </Stack>
           </FournisseurPreferences>
         </SQLiteProvider>

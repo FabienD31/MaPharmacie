@@ -201,14 +201,31 @@ export default function Accueil() {
         )}
       />
 
-      <Pressable
-        onPress={() => router.push('/formulaire')}
-        accessibilityRole="button"
-        accessibilityLabel="Ajouter un médicament"
-        style={({ pressed }) => [styles.bouton, pressed && styles.boutonPresse]}
-      >
-        <Text style={styles.texteBouton}>+ Ajouter un médicament</Text>
-      </Pressable>
+      <View style={styles.actionsBas}>
+        <Pressable
+          onPress={() => router.push('/scan')}
+          accessibilityRole="button"
+          accessibilityLabel="Scanner une boîte"
+          style={({ pressed }) => [
+            styles.boutonScan,
+            pressed && styles.boutonPresse,
+          ]}
+        >
+          <Text style={styles.texteBoutonScan}>Scanner une boîte</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push('/formulaire')}
+          accessibilityRole="button"
+          accessibilityLabel="Ajouter un médicament"
+          style={({ pressed }) => [
+            styles.bouton,
+            pressed && styles.boutonPresse,
+          ]}
+        >
+          <Text style={styles.texteBouton}>+ Ajouter à la main</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -273,15 +290,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: espacements.xl,
   },
-  bouton: {
+  actionsBas: {
     position: 'absolute',
     left: espacements.l,
     right: espacements.l,
     bottom: espacements.xl,
+    flexDirection: 'row',
+    gap: espacements.s,
+  },
+  bouton: {
+    flex: 1,
     backgroundColor: couleurs.primaire,
     borderRadius: rayons.l,
     paddingVertical: espacements.l,
     alignItems: 'center',
+  },
+  boutonScan: {
+    flex: 1,
+    backgroundColor: couleurs.carte,
+    borderColor: couleurs.primaire,
+    borderWidth: 1,
+    borderRadius: rayons.l,
+    paddingVertical: espacements.l,
+    alignItems: 'center',
+  },
+  texteBoutonScan: {
+    color: couleurs.primaire,
+    fontSize: 15,
+    fontWeight: '600',
   },
   boutonPresse: {
     opacity: 0.8,

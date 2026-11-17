@@ -39,17 +39,31 @@ function ouNull(valeur: string): string | null {
 export default function Formulaire() {
   const db = useSQLiteContext();
   const navigation = useNavigation();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  // Les paramètres autres que `id` viennent du scan d'une boîte : ils
+  // préremplissent les champs d'une nouvelle fiche, sans rien verrouiller.
+  const params = useLocalSearchParams<{
+    id?: string;
+    nom?: string;
+    principeActif?: string;
+    dosage?: string;
+    forme?: string;
+    quantite?: string;
+    datePeremption?: string;
+  }>();
+  const { id } = params;
 
   const idMedicament = id ? Number(id) : null;
   const modeEdition = idMedicament !== null;
+  const prerempliParScan = !modeEdition && params.nom !== undefined;
 
-  const [nom, setNom] = useState('');
-  const [principeActif, setPrincipeActif] = useState('');
-  const [dosage, setDosage] = useState('');
-  const [forme, setForme] = useState<string | null>(null);
-  const [quantite, setQuantite] = useState('');
-  const [datePeremption, setDatePeremption] = useState('');
+  const [nom, setNom] = useState(params.nom ?? '');
+  const [principeActif, setPrincipeActif] = useState(params.principeActif ?? '');
+  const [dosage, setDosage] = useState(params.dosage ?? '');
+  const [forme, setForme] = useState<string | null>(params.forme ?? null);
+  const [quantite, setQuantite] = useState(params.quantite ?? '');
+  const [datePeremption, setDatePeremption] = useState(
+    params.datePeremption ? isoVersAffichage(params.datePeremption) : ''
+  );
   const [lieu, setLieu] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [effets, setEffets] = useState<string[]>([]);
@@ -162,6 +176,15 @@ export default function Formulaire() {
         contentContainerStyle={styles.contenu}
         keyboardShouldPersistTaps="handled"
       >
+        {prerempliParScan && (
+          <View style={styles.bandeauScan}>
+            <Text style={styles.texteBandeauScan}>
+              Champs préremplis depuis la base publique des médicaments.
+              Vérifie-les et corrige si besoin.
+            </Text>
+          </View>
+        )}
+
         <ChampTexte
           libelle="Nom *"
           value={nom}
@@ -276,6 +299,19 @@ const styles = StyleSheet.create({
   contenu: {
     padding: espacements.l,
     paddingBottom: espacements.xxl,
+  },
+  bandeauScan: {
+    backgroundColor: couleurs.primaireClair,
+    borderColor: couleurs.primaire,
+    borderWidth: 1,
+    borderRadius: rayons.m,
+    padding: espacements.m,
+    marginBottom: espacements.l,
+  },
+  texteBandeauScan: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: couleurs.primaire,
   },
   champNotes: {
     minHeight: 96,

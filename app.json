@@ -28,6 +28,12 @@
       "expo-router",
       "expo-sqlite",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "L'accès à l'appareil photo sert uniquement à lire le code-barres d'une boîte de médicament. Aucune photo n'est enregistrée."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "color": "#1B6B9A"
