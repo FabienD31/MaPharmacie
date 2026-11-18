@@ -126,6 +126,22 @@ Aucune dépendance de suivi ou d'analytics n'est installée.
 
 ---
 
+## Compatibilité
+
+| | Minimum requis |
+| --- | --- |
+| **Android** | 7.0 Nougat (API 24), processeur **64 bits** (`arm64-v8a`) |
+| **iOS** | 16.4 |
+
+L'APK ne contient que l'architecture 64 bits. Tous les appareils Android sortis
+depuis 2017 environ en sont équipés ; un appareil 32 bits plus ancien ne
+pourra pas l'installer. Ce choix divise le poids du fichier par deux, chaque
+bibliothèque native étant sinon embarquée en double.
+
+Cette restriction ne concerne que l'APK autonome : une distribution par le
+Play Store se fait au format AAB, et Google y fabrique un paquet adapté à
+chaque appareil.
+
 ## Prérequis
 
 - [Node.js](https://nodejs.org/) 22 ou plus récent
@@ -267,6 +283,8 @@ Produit un APK installable directement. **Aucun compte payant n'est
 nécessaire** : la clé de signature est générée et conservée par EAS à la
 première construction.
 
+L'APK ne vise que les appareils 64 bits (voir [Compatibilité](#compatibilité)).
+
 ### iOS — compte Apple requis
 
 | Profil | Installable sur | Compte Apple |
@@ -334,6 +352,16 @@ imprimé.
 produit, la date de péremption et le numéro de lot. Le décodage est fait
 localement, donc la date de péremption est récupérée même sans connexion : seul
 le nom du médicament demande un appel réseau.
+
+**Poids de l'APK : une seule architecture.** Mesuré sur un APK universel de
+51,4 Mo, le poids se répartissait en 79 % de bibliothèques natives — dont la
+moitié n'était que la copie 32 bits des mêmes fichiers — contre 7 % pour le
+code de l'application. Les plus gros postes sont le moteur React Native
+(11,5 Mo), la bibliothèque de lecture de codes-barres de Google (7,8 Mo) et le
+moteur JavaScript (4,4 Mo) : aucun n'est réductible sans renoncer à une
+fonctionnalité. Ne conserver que `arm64-v8a`, avec la minification R8 et la
+suppression des ressources inutilisées, est donc le seul levier qui agisse
+vraiment.
 
 **Résolution CommonJS imposée à Metro.** Le SDK Anthropic contient un cycle
 d'imports ESM que Metro n'évalue pas correctement : `BetaToolRunner` arrive à
