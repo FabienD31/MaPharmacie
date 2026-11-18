@@ -218,6 +218,37 @@ export async function modifierMedicament(
 }
 
 /** Supprime définitivement un médicament et ses effets. */
+/**
+ * Ajoute ou retire des unités à la quantité restante.
+ *
+ * Le calcul est fait par SQLite plutôt qu'en JavaScript : deux retraits
+ * rapprochés partiraient sinon de la même valeur lue, et l'un des deux serait
+ * perdu. `MAX(..., 0)` empêche de descendre sous zéro.
+ *
+ * Renvoie la nouvelle quantité, ou null si le médicament n'en avait aucune
+ * de renseignée — il n'y a alors rien à décompter.
+ */
+export async function ajusterQuantite(
+  db: SQLiteDatabase,
+  id: number,
+  variation: number
+): Promise<number | null> {
+  await db.runAsync(
+    `UPDATE medicaments
+     SET quantite_restante = MAX(quantite_restante + ?, 0),
+         modifie_le = ?
+     WHERE id = ? AND quantite_restante IS NOT NULL`,
+    [variation, new Date().toISOString(), id]
+  );
+
+  const ligne = await db.getFirstAsync<{ quantite_restante: number | null }>(
+    'SELECT quantite_restante FROM medicaments WHERE id = ?',
+    [id]
+  );
+
+  return ligne?.quantite_restante ?? null;
+}
+
 export async function supprimerMedicament(
   db: SQLiteDatabase,
   id: number

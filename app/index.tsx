@@ -11,6 +11,7 @@ import { listerMedicaments, valeursDistinctes } from '../src/db/medicaments';
 import type { Medicament } from '../src/db/schema';
 import { usePreferences } from '../src/lib/ContextePreferences';
 import { useMargeBasse, useMiseEnPage } from '../src/lib/miseEnPage';
+import { retirerUnites } from '../src/lib/retraitQuantite';
 import { couleurs, espacements, rayons } from '../src/lib/theme';
 
 /** Délai avant de relancer la requête pendant la frappe, en millisecondes. */
@@ -31,6 +32,8 @@ export default function Accueil() {
 
   const [medicaments, setMedicaments] = useState<Medicament[]>([]);
   const [total, setTotal] = useState(0);
+  /** Identifiant du medicament dont la quantite est en cours de mise a jour. */
+  const [enRetrait, setEnRetrait] = useState<number | null>(null);
 
   const [recherche, setRecherche] = useState('');
   const [rechercheDifferee, setRechercheDifferee] = useState('');
@@ -91,6 +94,38 @@ export default function Accueil() {
       };
     }, [db, rechercheDifferee, lieu, forme, resynchroniser])
   );
+
+  /**
+   * Retire une unité depuis la liste, sans ouvrir la fiche.
+   *
+   * La carte est mise à jour sur place plutôt que la liste rechargée : un
+   * rechargement complet ferait sauter la position de défilement au moment
+   * précis où l'on enchaîne les décomptes.
+   */
+  function retirerUne(medicament: Medicament) {
+    if (enRetrait !== null) return;
+    setEnRetrait(medicament.id);
+
+    retirerUnites(db, medicament, {
+      onQuantite: (nouvelle) => {
+        setMedicaments((liste) =>
+          liste.map((item) =>
+            item.id === medicament.id
+              ? { ...item, quantiteRestante: nouvelle }
+              : item
+          )
+        );
+        setEnRetrait(null);
+      },
+      onSupprime: () => {
+        setMedicaments((liste) =>
+          liste.filter((item) => item.id !== medicament.id)
+        );
+        setTotal((valeur) => Math.max(valeur - 1, 0));
+        setEnRetrait(null);
+      },
+    }).catch(() => setEnRetrait(null));
+  }
 
   /** Remet la liste à plat : ni recherche, ni filtre. */
   function reinitialiser() {
@@ -212,7 +247,9 @@ export default function Accueil() {
             <CarteMedicament
               medicament={item}
               seuilJours={preferences.seuilJours}
+              occupe={enRetrait === item.id}
               onPress={() => router.push(`/medicament/${item.id}`)}
+              onRetirerUne={() => retirerUne(item)}
             />
           </View>
         )}

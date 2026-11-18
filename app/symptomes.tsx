@@ -9,6 +9,7 @@ import { chercherParEffet, tousLesEffets } from '../src/db/medicaments';
 import type { Medicament } from '../src/db/schema';
 import { usePreferences } from '../src/lib/ContextePreferences';
 import { useMargeBasse } from '../src/lib/miseEnPage';
+import { retirerUnites } from '../src/lib/retraitQuantite';
 import { couleurs, espacements, rayons } from '../src/lib/theme';
 
 /** Délai avant de relancer la requête pendant la frappe, en millisecondes. */
@@ -31,6 +32,7 @@ export default function RechercheSymptomes() {
   const [recherche, setRecherche] = useState('');
   const [resultats, setResultats] = useState<Medicament[]>([]);
   const [effetsConnus, setEffetsConnus] = useState<string[]>([]);
+  const [enRetrait, setEnRetrait] = useState<number | null>(null);
 
   // Les effets déjà enregistrés servent de raccourcis de recherche.
   useEffect(() => {
@@ -63,6 +65,35 @@ export default function RechercheSymptomes() {
       actif = false;
     };
   }, [db, recherche, rechercheEnCours]);
+
+  /**
+   * Retrait d'une unité depuis les résultats.
+   * Même comportement que dans la liste, popup de fin de boîte comprise :
+   * c'est souvent ici qu'on décide de prendre quelque chose.
+   */
+  function retirerUne(medicament: Medicament) {
+    if (enRetrait !== null) return;
+    setEnRetrait(medicament.id);
+
+    retirerUnites(db, medicament, {
+      onQuantite: (nouvelle) => {
+        setResultats((liste) =>
+          liste.map((item) =>
+            item.id === medicament.id
+              ? { ...item, quantiteRestante: nouvelle }
+              : item
+          )
+        );
+        setEnRetrait(null);
+      },
+      onSupprime: () => {
+        setResultats((liste) =>
+          liste.filter((item) => item.id !== medicament.id)
+        );
+        setEnRetrait(null);
+      },
+    }).catch(() => setEnRetrait(null));
+  }
 
   // Sans recherche en cours, on n'affiche rien plutôt que de vider l'état :
   // remettre l'état à zéro depuis un effet déclenche un rendu en cascade.
@@ -149,7 +180,9 @@ export default function RechercheSymptomes() {
           <CarteMedicament
             medicament={item}
             seuilJours={preferences.seuilJours}
+            occupe={enRetrait === item.id}
             onPress={() => router.push(`/medicament/${item.id}`)}
+            onRetirerUne={() => retirerUne(item)}
           />
         )}
       />

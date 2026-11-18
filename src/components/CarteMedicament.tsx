@@ -9,11 +9,25 @@ type Props = {
   medicament: Medicament;
   seuilJours: number;
   onPress: () => void;
+  /** Retrait d'une unité sans ouvrir la fiche. */
+  onRetirerUne?: () => void;
+  /** Vrai pendant l'écriture en base, pour éviter les appuis répétés. */
+  occupe?: boolean;
 };
 
 /** Ligne de la liste principale : un médicament et son échéance. */
-export function CarteMedicament({ medicament, seuilJours, onPress }: Props) {
+export function CarteMedicament({
+  medicament,
+  seuilJours,
+  onPress,
+  onRetirerUne,
+  occupe = false,
+}: Props) {
   const perime = statutPeremption(medicament.datePeremption, seuilJours) === 'perime';
+
+  // Extraite une fois : à l'intérieur des fonctions de style, TypeScript perd
+  // le rétrécissement de type opéré par le test de nullité.
+  const quantite = medicament.quantiteRestante;
 
   // Sous-titre composé des informations réellement renseignées.
   const details = [medicament.principeActif, medicament.dosage, medicament.forme]
@@ -45,9 +59,6 @@ export function CarteMedicament({ medicament, seuilJours, onPress }: Props) {
             <Text style={styles.nom} numberOfLines={1}>
               {medicament.nom}
             </Text>
-            {medicament.quantiteRestante !== null && (
-              <Text style={styles.quantite}>{medicament.quantiteRestante}×</Text>
-            )}
           </View>
 
           {details.length > 0 && (
@@ -56,6 +67,35 @@ export function CarteMedicament({ medicament, seuilJours, onPress }: Props) {
             </Text>
           )}
         </View>
+
+        {/*
+          Retrait d'une prise sans ouvrir la fiche : c'est le geste quotidien.
+          La touche est hors de la zone qui ouvre la fiche, assez grande pour
+          être visée sans attention, et porte la quantité restante — on voit
+          donc ce qu'on décompte au moment où on le décompte.
+        */}
+        {quantite !== null && onRetirerUne && (
+          <Pressable
+            onPress={onRetirerUne}
+            disabled={occupe || quantite <= 0}
+            accessibilityRole="button"
+            accessibilityLabel={`Retirer une unité de ${medicament.nom}, il en reste ${quantite}`}
+            hitSlop={6}
+            style={({ pressed }) => [
+              styles.retrait,
+              (occupe || quantite <= 0) && styles.retraitInactif,
+              pressed && styles.retraitPresse,
+            ]}
+          >
+            <Text style={styles.retraitNombre}>{quantite}</Text>
+            <Text style={styles.retraitSigne}>−1</Text>
+          </Pressable>
+        )}
+
+        {/* Sans retrait possible, la quantité reste affichée, en simple texte. */}
+        {quantite !== null && !onRetirerUne && (
+          <Text style={styles.quantite}>{quantite}×</Text>
+        )}
       </View>
 
       <View style={styles.pied}>
@@ -115,6 +155,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: couleurs.texte,
+  },
+  retrait: {
+    width: 56,
+    height: 56,
+    borderRadius: rayons.m,
+    borderWidth: 1,
+    borderColor: couleurs.primaire,
+    backgroundColor: couleurs.primaireClair,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retraitInactif: {
+    opacity: 0.35,
+  },
+  retraitPresse: {
+    opacity: 0.6,
+  },
+  retraitNombre: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: couleurs.primaire,
+    lineHeight: 21,
+  },
+  retraitSigne: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: couleurs.primaire,
   },
   quantite: {
     fontSize: 14,

@@ -12,11 +12,13 @@ import {
 } from 'react-native';
 
 import { BadgePeremption } from '../../src/components/BadgePeremption';
+import { CompteurQuantite } from '../../src/components/CompteurQuantite';
 import { obtenirMedicament, supprimerMedicament } from '../../src/db/medicaments';
 import type { Medicament } from '../../src/db/schema';
 import { usePreferences } from '../../src/lib/ContextePreferences';
 import { isoVersAffichage } from '../../src/lib/dates';
 import { supprimerPhoto } from '../../src/lib/photos';
+import { ajouterUnites, retirerUnites } from '../../src/lib/retraitQuantite';
 import { ouvrirRechercheWeb } from '../../src/lib/rechercheWeb';
 import { useMargeBasse } from '../../src/lib/miseEnPage';
 import { couleurs, espacements, rayons } from '../../src/lib/theme';
@@ -41,6 +43,7 @@ export default function FicheMedicament() {
 
   const [medicament, setMedicament] = useState<Medicament | null>(null);
   const [chargement, setChargement] = useState(true);
+  const [ajustement, setAjustement] = useState(false);
 
   // Rechargé au retour du formulaire pour afficher les modifications.
   useFocusEffect(
@@ -76,6 +79,38 @@ export default function FicheMedicament() {
         });
       }
     );
+  }
+
+  /** Retire une unité, et propose de supprimer la fiche si la boîte se vide. */
+  function retirerUne() {
+    if (!medicament || ajustement) return;
+    setAjustement(true);
+
+    retirerUnites(db, medicament, {
+      onQuantite: (nouvelle) => {
+        setMedicament((actuel) =>
+          actuel ? { ...actuel, quantiteRestante: nouvelle } : actuel
+        );
+        setAjustement(false);
+      },
+      onSupprime: () => {
+        setAjustement(false);
+        router.back();
+      },
+    }).catch(() => setAjustement(false));
+  }
+
+  /** Ajoute une unité, après un rachat ou une erreur de décompte. */
+  function ajouterUne() {
+    if (!medicament || ajustement) return;
+    setAjustement(true);
+
+    ajouterUnites(db, medicament, (nouvelle) => {
+      setMedicament((actuel) =>
+        actuel ? { ...actuel, quantiteRestante: nouvelle } : actuel
+      );
+      setAjustement(false);
+    }).catch(() => setAjustement(false));
   }
 
   /** Demande confirmation avant une suppression définitive. */
@@ -144,6 +179,25 @@ export default function FicheMedicament() {
           resizeMode="cover"
           accessibilityLabel={`Photo de ${medicament.nom}`}
         />
+      )}
+
+      {/*
+        Placé haut dans la page, avant les détails : décompter une prise est
+        le geste le plus fréquent, il ne doit pas demander de faire défiler.
+      */}
+      {medicament.quantiteRestante !== null && (
+        <View style={styles.carte}>
+          <Text style={styles.libelle}>Quantité restante</Text>
+          <View style={styles.compteur}>
+            <CompteurQuantite
+              quantite={medicament.quantiteRestante}
+              unite={medicament.forme}
+              occupe={ajustement}
+              onRetirer={retirerUne}
+              onAjouter={ajouterUne}
+            />
+          </View>
+        </View>
       )}
 
       <View style={styles.carte}>
@@ -274,6 +328,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: couleurs.primaire,
+  },
+  compteur: {
+    marginTop: espacements.s,
   },
   photo: {
     width: '100%',
