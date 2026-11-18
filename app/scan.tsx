@@ -11,6 +11,7 @@ import {
 
 import { chercherParCip13 } from '../src/lib/apiMedicaments';
 import { decoderCodeBarre } from '../src/lib/codeBarres';
+import { useMargeBasse } from '../src/lib/miseEnPage';
 import { couleurs, espacements, rayons } from '../src/lib/theme';
 
 /**
@@ -37,6 +38,7 @@ type Etat =
  */
 export default function Scan() {
   const [permission, demanderPermission] = useCameraPermissions();
+  const margeBasse = useMargeBasse(espacements.xl);
   const [etat, setEtat] = useState<Etat>({ phase: 'scan' });
 
   // La caméra émet plusieurs fois le même code : ce verrou évite de lancer
@@ -203,7 +205,11 @@ export default function Scan() {
       <Pressable
         onPress={() => router.replace('/formulaire')}
         accessibilityRole="button"
-        style={({ pressed }) => [styles.boutonBas, pressed && styles.presse]}
+        style={({ pressed }) => [
+          styles.boutonBas,
+          { bottom: margeBasse },
+          pressed && styles.presse,
+        ]}
       >
         <Text style={styles.texteBouton}>Saisir à la main</Text>
       </Pressable>

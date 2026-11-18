@@ -1,4 +1,5 @@
 import { useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /**
  * Adaptation de la mise en page aux grands écrans.
@@ -22,6 +23,22 @@ export type MiseEnPage = {
   /** Largeur maximale du contenu, pour ne pas étirer le texte. */
   largeurMax: number;
 };
+
+/**
+ * Marge basse à réserver, en plus d'un espacement donné.
+ *
+ * Android dessine désormais les applications sous les barres système
+ * (edge-to-edge) : sans cette marge, un bouton fixé en bas de l'écran passe
+ * sous les touches de navigation et devient inatteignable. Sur iPhone, la même
+ * valeur couvre la barre d'accueil.
+ *
+ * L'en-tête de navigation gère déjà le haut de l'écran, seul le bas est à
+ * traiter ici.
+ */
+export function useMargeBasse(espacementDeBase = 0): number {
+  const { bottom } = useSafeAreaInsets();
+  return espacementDeBase + bottom;
+}
 
 /** Mesure l'écran et en déduit la mise en page. Réagit à la rotation. */
 export function useMiseEnPage(): MiseEnPage {

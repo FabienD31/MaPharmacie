@@ -29,6 +29,7 @@ import {
   type ResultatPhoto,
 } from '../src/lib/photos';
 import { suggererEffets } from '../src/lib/suggestionsIA';
+import { useMargeBasse } from '../src/lib/miseEnPage';
 import { couleurs, espacements, rayons } from '../src/lib/theme';
 
 /** Transforme une saisie vide en null, pour ne pas stocker de chaînes vides. */
@@ -44,6 +45,7 @@ function ouNull(valeur: string): string | null {
  * médicament existant et le met à jour ; sans `id`, il crée une nouvelle fiche.
  */
 export default function Formulaire() {
+  const margeBasse = useMargeBasse(espacements.xxl);
   const db = useSQLiteContext();
   const navigation = useNavigation();
   // Les paramètres autres que `id` viennent du scan d'une boîte : ils
@@ -250,7 +252,12 @@ export default function Formulaire() {
     if (!prerempliParScan || suggestionDemandee.current) return;
     if (nom.trim().length === 0) return;
     suggestionDemandee.current = true;
-    demanderSuggestions();
+
+    // Déclenché hors du corps de l'effet : lancer la requête directement
+    // mettrait l'état à jour pendant le rendu et provoquerait un rendu en
+    // cascade. Le délai nul suffit à sortir du cycle en cours.
+    const depart = setTimeout(demanderSuggestions, 0);
+    return () => clearTimeout(depart);
     // Une seule fois, au retour du scan.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prerempliParScan, nom]);
@@ -317,7 +324,7 @@ export default function Formulaire() {
         l'écran d'un bloc et pouvait laisser le champ sous le clavier.
       */}
       <ScrollView
-        contentContainerStyle={[styles.contenu, styles.centre]}
+        contentContainerStyle={[styles.contenu, styles.centre, { paddingBottom: margeBasse }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets

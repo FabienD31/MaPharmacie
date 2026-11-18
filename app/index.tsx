@@ -10,7 +10,7 @@ import { LigneFiltres } from '../src/components/LigneFiltres';
 import { listerMedicaments, valeursDistinctes } from '../src/db/medicaments';
 import type { Medicament } from '../src/db/schema';
 import { usePreferences } from '../src/lib/ContextePreferences';
-import { useMiseEnPage } from '../src/lib/miseEnPage';
+import { useMargeBasse, useMiseEnPage } from '../src/lib/miseEnPage';
 import { couleurs, espacements, rayons } from '../src/lib/theme';
 
 /** Délai avant de relancer la requête pendant la frappe, en millisecondes. */
@@ -27,6 +27,7 @@ export default function Accueil() {
   const db = useSQLiteContext();
   const { preferences, resynchroniser } = usePreferences();
   const { colonnes, largeurMax } = useMiseEnPage();
+  const margeBasse = useMargeBasse(espacements.xl);
 
   const [medicaments, setMedicaments] = useState<Medicament[]>([]);
   const [total, setTotal] = useState(0);
@@ -130,6 +131,9 @@ export default function Accueil() {
         columnWrapperStyle={colonnes > 1 ? styles.rangeeColonnes : undefined}
         contentContainerStyle={[
           styles.liste,
+          // Place pour la barre d'action, elle-même remontée au-dessus des
+          // touches de navigation Android.
+          { paddingBottom: 96 + margeBasse },
           { maxWidth: largeurMax, width: '100%', alignSelf: 'center' },
         ]}
         keyboardShouldPersistTaps="handled"
@@ -214,7 +218,7 @@ export default function Accueil() {
         )}
       />
 
-      <View style={styles.actionsBas}>
+      <View style={[styles.actionsBas, { bottom: margeBasse }]}>
         <View style={[styles.rangeeActions, { maxWidth: largeurMax }]}>
         <Pressable
           onPress={() => router.push('/scan')}

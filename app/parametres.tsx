@@ -23,6 +23,7 @@ import {
 } from '../src/lib/cleApi';
 import { usePreferences } from '../src/lib/ContextePreferences';
 import { demanderAutorisation } from '../src/lib/notifications';
+import { useMargeBasse } from '../src/lib/miseEnPage';
 import { couleurs, espacements, rayons } from '../src/lib/theme';
 
 /** Valeurs de seuil proposées en un geste, en jours. */
@@ -33,6 +34,7 @@ const HEURES = [8, 9, 12, 18, 20];
 
 /** Écran de réglages : notifications et délai d'alerte. */
 export default function Parametres() {
+  const margeBasse = useMargeBasse(espacements.xxl);
   const { preferences, enregistrer } = usePreferences();
   const [occupe, setOccupe] = useState(false);
 
@@ -138,7 +140,7 @@ export default function Parametres() {
   return (
     <ScrollView
       style={styles.ecran}
-      contentContainerStyle={[styles.contenu, styles.centre]}
+      contentContainerStyle={[styles.contenu, styles.centre, { paddingBottom: margeBasse }]}
       keyboardShouldPersistTaps="handled"
       automaticallyAdjustKeyboardInsets
     >

@@ -18,6 +18,7 @@ import { usePreferences } from '../../src/lib/ContextePreferences';
 import { isoVersAffichage } from '../../src/lib/dates';
 import { supprimerPhoto } from '../../src/lib/photos';
 import { ouvrirRechercheWeb } from '../../src/lib/rechercheWeb';
+import { useMargeBasse } from '../../src/lib/miseEnPage';
 import { couleurs, espacements, rayons } from '../../src/lib/theme';
 
 /** Une ligne « libellé / valeur » de la fiche. */
@@ -32,6 +33,7 @@ function Ligne({ libelle, valeur }: { libelle: string; valeur: string }) {
 
 /** Fiche détaillée d'un médicament, avec modification et suppression. */
 export default function FicheMedicament() {
+  const margeBasse = useMargeBasse(espacements.xxl);
   const db = useSQLiteContext();
   const { preferences, enregistrer } = usePreferences();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -115,7 +117,7 @@ export default function FicheMedicament() {
   return (
     <ScrollView
       style={styles.ecran}
-      contentContainerStyle={[styles.contenu, styles.centre]}
+      contentContainerStyle={[styles.contenu, styles.centre, { paddingBottom: margeBasse }]}
     >
       <View style={styles.entete}>
         {/* Le nom est un lien : il ouvre une recherche web sur le médicament. */}

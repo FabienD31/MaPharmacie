@@ -8,6 +8,7 @@ import { CarteMedicament } from '../src/components/CarteMedicament';
 import { chercherParEffet, tousLesEffets } from '../src/db/medicaments';
 import type { Medicament } from '../src/db/schema';
 import { usePreferences } from '../src/lib/ContextePreferences';
+import { useMargeBasse } from '../src/lib/miseEnPage';
 import { couleurs, espacements, rayons } from '../src/lib/theme';
 
 /** Délai avant de relancer la requête pendant la frappe, en millisecondes. */
@@ -22,6 +23,7 @@ const DELAI_RECHERCHE = 250;
  * précisément le rôle de la notice et du pharmacien, rappelé en haut de page.
  */
 export default function RechercheSymptomes() {
+  const margeBasse = useMargeBasse(espacements.xxl);
   const db = useSQLiteContext();
   const { preferences } = usePreferences();
 
@@ -46,13 +48,12 @@ export default function RechercheSymptomes() {
     return () => clearTimeout(minuteur);
   }, [saisie]);
 
-  useEffect(() => {
-    let actif = true;
+  const rechercheEnCours = recherche.trim().length > 0;
 
-    if (recherche.trim().length === 0) {
-      setResultats([]);
-      return;
-    }
+  useEffect(() => {
+    if (!rechercheEnCours) return;
+
+    let actif = true;
 
     chercherParEffet(db, recherche).then((trouves) => {
       if (actif) setResultats(trouves);
@@ -61,16 +62,18 @@ export default function RechercheSymptomes() {
     return () => {
       actif = false;
     };
-  }, [db, recherche]);
+  }, [db, recherche, rechercheEnCours]);
 
-  const rechercheEnCours = recherche.trim().length > 0;
+  // Sans recherche en cours, on n'affiche rien plutôt que de vider l'état :
+  // remettre l'état à zéro depuis un effet déclenche un rendu en cascade.
+  const resultatsAffiches = rechercheEnCours ? resultats : [];
 
   return (
     <View style={styles.ecran}>
       <FlatList
-        data={resultats}
+        data={resultatsAffiches}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={[styles.liste, styles.centre]}
+        contentContainerStyle={[styles.liste, styles.centre, { paddingBottom: margeBasse }]}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         ListHeaderComponent={
@@ -121,8 +124,8 @@ export default function RechercheSymptomes() {
 
             {rechercheEnCours && (
               <Text style={styles.compteur}>
-                {resultats.length}
-                {resultats.length === 1 ? ' médicament' : ' médicaments'} dans ta
+                {resultatsAffiches.length}
+                {resultatsAffiches.length === 1 ? ' médicament' : ' médicaments'} dans ta
                 pharmacie
               </Text>
             )}
