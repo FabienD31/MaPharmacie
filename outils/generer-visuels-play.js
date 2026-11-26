@@ -55,20 +55,49 @@ function chunk(type, data) {
   return Buffer.concat([longueur, corps, somme]);
 }
 
-/** Encode une image RGBA de dimensions quelconques. */
-function encoderPng(rgba, largeur, hauteur) {
+/**
+ * Encode une image à partir d'un tampon RGBA.
+ *
+ * `opaque` écrit un PNG 24 bits sans canal alpha, ce que Play exige pour
+ * certains visuels. Le canal alpha du tampon est alors simplement écarté.
+ *
+ * Les lignes sont filtrées en « Up », c'est-à-dire écrites comme leur
+ * différence avec la ligne précédente. Sur un dégradé, ces différences sont
+ * presque constantes, et l'image compresse dix fois mieux qu'avec des lignes
+ * brutes — la limite du mégaoctet en dépend.
+ */
+function encoderPng(rgba, largeur, hauteur, { opaque = false } = {}) {
+  const canaux = opaque ? 3 : 4;
+
   const entete = Buffer.alloc(13);
   entete.writeUInt32BE(largeur, 0);
   entete.writeUInt32BE(hauteur, 4);
   entete[8] = 8; // 8 bits par canal
-  entete[9] = 6; // RGBA
+  entete[9] = opaque ? 2 : 6; // RVB, ou RVBA
 
-  // Chaque ligne est précédée de son octet de filtre, ici toujours « aucun ».
-  const pasLigne = largeur * 4;
+  const pasLigne = largeur * canaux;
+  const ligne = Buffer.alloc(pasLigne);
+  const precedente = Buffer.alloc(pasLigne);
   const brut = Buffer.alloc(hauteur * (pasLigne + 1));
+
   for (let y = 0; y < hauteur; y += 1) {
-    brut[y * (pasLigne + 1)] = 0;
-    rgba.copy(brut, y * (pasLigne + 1) + 1, y * pasLigne, (y + 1) * pasLigne);
+    // Extraction de la ligne, alpha écarté si l'image est opaque.
+    for (let x = 0; x < largeur; x += 1) {
+      const src = (y * largeur + x) * 4;
+      const dst = x * canaux;
+      ligne[dst] = rgba[src];
+      ligne[dst + 1] = rgba[src + 1];
+      ligne[dst + 2] = rgba[src + 2];
+      if (!opaque) ligne[dst + 3] = rgba[src + 3];
+    }
+
+    const base = y * (pasLigne + 1);
+    brut[base] = y === 0 ? 0 : 2; // « aucun » pour la première ligne, « Up » ensuite
+    for (let i = 0; i < pasLigne; i += 1) {
+      brut[base + 1 + i] = y === 0 ? ligne[i] : (ligne[i] - precedente[i]) & 0xff;
+    }
+
+    ligne.copy(precedente);
   }
 
   return Buffer.concat([
@@ -105,9 +134,9 @@ function distanceCroix(px, py, cx, cy, demiLongueur, rayon) {
  * Peint une image à partir d'une fonction qui renvoie une couleur par point.
  * Trois sous-échantillons par axe suffisent à lisser les bords.
  */
-function rendre(largeur, hauteur, couleurEn) {
+function rendre(largeur, hauteur, couleurEn, { sous = 3, opaque = false } = {}) {
   const rgba = Buffer.alloc(largeur * hauteur * 4);
-  const SOUS = 3;
+  const SOUS = sous;
 
   for (let y = 0; y < hauteur; y += 1) {
     for (let x = 0; x < largeur; x += 1) {
@@ -135,7 +164,7 @@ function rendre(largeur, hauteur, couleurEn) {
     }
   }
 
-  return encoderPng(rgba, largeur, hauteur);
+  return encoderPng(rgba, largeur, hauteur, { opaque });
 }
 
 function melanger(a, b, t) {
@@ -166,7 +195,7 @@ function icone(cote) {
  * n'écrit rien, et deux croix fantômes à droite pour occuper le vide sans
  * attirer l'œil.
  */
-function bandeau(largeur, hauteur) {
+function bandeau(largeur, hauteur, options = {}) {
   const cx = largeur * 0.26;
   const cy = hauteur / 2;
   const demiLongueur = hauteur * 0.29;
@@ -198,7 +227,7 @@ function bandeau(largeur, hauteur) {
     if (d <= 0) couleur = BLANC;
 
     return [...couleur, 255];
-  });
+  }, options);
 }
 
 // ---------------------------------------------------------------- écriture
@@ -212,7 +241,12 @@ fs.mkdirSync(dossier, { recursive: true });
 
 const fichiers = [
   ['icone-512.png', icone(512)],
-  ['bandeau-1024x500.png', bandeau(1024, 500)],
+  // Play refuse la transparence sur les visuels de présentation.
+  ['bandeau-1024x500.png', bandeau(1024, 500, { opaque: true })],
+  // Grand visuel 16/9 : PNG 24 bits sans alpha, sous le mégaoctet.
+  // Deux sous-échantillons suffisent à cette définition, et divisent par deux
+  // le temps de rendu des neuf millions de pixels.
+  ['grand-visuel-4096x2304.png', bandeau(4096, 2304, { sous: 2, opaque: true })],
 ];
 
 for (const [nom, donnees] of fichiers) {
